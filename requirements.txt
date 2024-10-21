@@ -1,0 +1,10 @@
+scikit-learn
+requests
+beautifulsoup4
+aiohttp
+numpy
+sentence-transformers
+scikit-learn
+torch
+pandas
+python-dotenv

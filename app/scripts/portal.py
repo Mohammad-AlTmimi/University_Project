@@ -6,7 +6,6 @@ import time
 from dotenv import load_dotenv
 import os
 from app.exceptions import CustomError
-
 load_dotenv()
 
 # in this updated code now we automated the process of scrap data from portal page by pass user
@@ -105,9 +104,9 @@ def scrapCourses(session_id):
 
     return []
 
-try:
-    print(scrapCourses('1irpnm0mv1ibafsk5ot5zlgz'))
-except CustomError as e:
-    print(f"CustomError occurred: {e}")
-except Exception as e:
-    print(f"An unexpected error occurred: {e}")
+#   try:
+#       print(scrapCourses('1irpnm0mv1ibafsk5ot5zlgz'))
+#   except CustomError as e:
+#       print(f"CustomError occurred: {e}")
+#   except Exception as e:
+#       print(f"An unexpected error occurred: {e}")

@@ -5,8 +5,10 @@ import asyncio
 import time
 from dotenv import load_dotenv
 import os
+from app.exceptions import CustomError
 
 load_dotenv()
+
 # in this updated code now we automated the process of scrap data from portal page by pass user
 # token to function 
 # for performance and scailability i will treat this code as a package which i will only import it in needed place
@@ -14,6 +16,8 @@ load_dotenv()
 # this code might have a few problem so it still under testing which my take alitle time as the portal page is closed 
 # this package still need to have the number of pages that need to scrap as we know give to page 
 # but it should be automated 
+
+
 async def fetch_page(session, url, headers, data, cookies):
     async with session.post(url, headers=headers, data=data, cookies=cookies) as response:
         return await response.text()
@@ -36,36 +40,39 @@ async def fetch_all_pages(url, headers, viewstate, viewstategen, eventvalidation
         portalPages = await asyncio.gather(*tasks)
         return portalPages
 
+def get_hidden_fields(soup):
+    try:
+        viewstate = soup.find('input', {'id': '__VIEWSTATE'})['value']
+        viewstategen = soup.find('input', {'id': '__VIEWSTATEGENERATOR'})['value']
+        eventvalidation = soup.find('input', {'id': '__EVENTVALIDATION'})['value']
+    except (TypeError, KeyError) as e:
+        raise CustomError("Missing required hidden fields", 1001)
+    return viewstate, viewstategen, eventvalidation
+
 def scrapCourses(session_id):
     url = os.getenv('URL')
 
-    # User Token
     cookies = {
         'ASP.NET_SessionId': session_id
     }
 
-    # Get initial response
     try:
         response = requests.get(url, cookies=cookies)
-        response.raise_for_status()  # Raises an HTTPError if the HTTP request returned an unsuccessful status code
+        response.raise_for_status()
     except requests.RequestException as e:
-        print(f"Error fetching the initial page: {e}")
-        return []
+        raise CustomError(f"Failed to fetch initial page: {str(e)}", 1002)
 
     soup = BeautifulSoup(response.text, 'html.parser')
 
-    # Extract hidden form fields
-    def get_hidden_fields(soup):
-        viewstate = soup.find('input', {'id': '__VIEWSTATE'})['value']
-        viewstategen = soup.find('input', {'id': '__VIEWSTATEGENERATOR'})['value']
-        eventvalidation = soup.find('input', {'id': '__EVENTVALIDATION'})['value']
-        return viewstate, viewstategen, eventvalidation
+    try:
+        viewstate, viewstategen, eventvalidation = get_hidden_fields(soup)
+    except CustomError as e:
+        print(e)
+        return []  # Returning an empty list if hidden fields are missing
 
-    viewstate, viewstategen, eventvalidation = get_hidden_fields(soup)
     headers = {
         'Content-Type': 'application/x-www-form-urlencoded'
     }
-
     data = {
         '__VIEWSTATE': viewstate,
         '__VIEWSTATEGENERATOR': viewstategen,
@@ -78,13 +85,11 @@ def scrapCourses(session_id):
         response = requests.post(url, headers=headers, data=data, cookies=cookies)
         response.raise_for_status()
     except requests.RequestException as e:
-        print(f"Error during the POST request: {e}")
-        return []
+        raise CustomError(f"Error during POST request: {str(e)}", 1003)
 
     soup = BeautifulSoup(response.text, 'html.parser')
     viewstate, viewstategen, eventvalidation = get_hidden_fields(soup)
 
-    # Asynchronously fetch all pages
     async def main():
         return await fetch_all_pages(url, headers, viewstate, viewstategen, eventvalidation, cookies)
 
@@ -92,14 +97,17 @@ def scrapCourses(session_id):
     portalPages = asyncio.run(main())
     print(f"Time taken: {time.time() - start_time} seconds")
 
-    # Process the first page
     if portalPages:
         arrSoup = [BeautifulSoup(page, 'html.parser') for page in portalPages]
         rows = [soup.findAll('tr', {'bgcolor': '#C8FFC8'}) for soup in arrSoup]
         td_values = [td.text.strip() for r in rows for row in r for td in row.find_all('td')]
         return td_values
+
     return []
 
-# Example usage:
-# td_values = scrapCourses("your_session_id_here")
-# print(td_values)
+try:
+    print(scrapCourses('1irpnm0mv1ibafsk5ot5zlgz'))
+except CustomError as e:
+    print(f"CustomError occurred: {e}")
+except Exception as e:
+    print(f"An unexpected error occurred: {e}")

@@ -8,3 +8,5 @@ scikit-learn
 torch
 pandas
 python-dotenv
+fastapi
+uvicorn[standard]

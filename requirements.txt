@@ -10,3 +10,9 @@ pandas
 python-dotenv
 fastapi
 uvicorn[standard]
+DateTime
+jwt
+sqlalchemy
+motor
+pydantic
+asyncpg

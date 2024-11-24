@@ -5,7 +5,6 @@ import asyncio
 import time
 from dotenv import load_dotenv
 import os
-from app.exceptions import CustomError
 load_dotenv()
 
 # in this updated code now we automated the process of scrap data from portal page by pass user
@@ -45,11 +44,11 @@ def get_hidden_fields(soup):
         viewstategen = soup.find('input', {'id': '__VIEWSTATEGENERATOR'})['value']
         eventvalidation = soup.find('input', {'id': '__EVENTVALIDATION'})['value']
     except (TypeError, KeyError) as e:
-        raise CustomError("Missing required hidden fields", 1001)
+        raise ValueError("Missing required hidden fields")
     return viewstate, viewstategen, eventvalidation
 
 def scrapCourses(session_id):
-    url = os.getenv('URL')
+    url = os.getenv('URLA')
 
     cookies = {
         'ASP.NET_SessionId': session_id
@@ -59,14 +58,14 @@ def scrapCourses(session_id):
         response = requests.get(url, cookies=cookies)
         response.raise_for_status()
     except requests.RequestException as e:
-        raise CustomError(f"Failed to fetch initial page: {str(e)}", 1002)
+        raise ValueError(f"Failed to fetch initial page: {str(e)}")
 
     soup = BeautifulSoup(response.text, 'html.parser')
 
     try:
         viewstate, viewstategen, eventvalidation = get_hidden_fields(soup)
-    except CustomError as e:
-        print(e)
+    except e:
+        #print(e)
         return []  # Returning an empty list if hidden fields are missing
 
     headers = {
@@ -84,7 +83,7 @@ def scrapCourses(session_id):
         response = requests.post(url, headers=headers, data=data, cookies=cookies)
         response.raise_for_status()
     except requests.RequestException as e:
-        raise CustomError(f"Error during POST request: {str(e)}", 1003)
+        raise ValueError(f"Error during POST request: {str(e)}")
 
     soup = BeautifulSoup(response.text, 'html.parser')
     viewstate, viewstategen, eventvalidation = get_hidden_fields(soup)
@@ -94,7 +93,7 @@ def scrapCourses(session_id):
 
     start_time = time.time()
     portalPages = asyncio.run(main())
-    print(f"Time taken: {time.time() - start_time} seconds")
+    #print(f"Time taken: {time.time() - start_time} seconds")
 
     if portalPages:
         arrSoup = [BeautifulSoup(page, 'html.parser') for page in portalPages]
@@ -103,6 +102,31 @@ def scrapCourses(session_id):
         return td_values
 
     return []
+
+
+def scrapUserCourses(session_id):
+    url = os.getenv('URLB')
+    cookies = {
+        'ASP.NET_SessionId': session_id
+    }
+    
+    try:
+        response = requests.get(url, cookies=cookies)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        raise ValueError(f"Failed to fetch initial page: {str(e)}")
+    
+    soup = BeautifulSoup(response.text, 'html.parser')
+    courses = [[cell.get_text(strip=True) for cell in row.find_all('td')] for row in soup.find_all('tr', {'bgcolor': '#F7F7DE'})]
+
+    #courses = soup.find_all('tr' , {'bgcolor="#6B696B"'})
+    print(len(courses))
+    print(courses)
+    
+    
+    
+scrapUserCourses('1irpnm0mv1ibafsk5ot5zlgz')
+
 
 #   try:
 #       print(scrapCourses('1irpnm0mv1ibafsk5ot5zlgz'))

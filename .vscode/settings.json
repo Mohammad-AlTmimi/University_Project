@@ -1,0 +1,6 @@
+{
+    "python.analysis.extraPaths": [
+        "./app/routers",
+        "./app/middleware/auth"
+    ]
+}

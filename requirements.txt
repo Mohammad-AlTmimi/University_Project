@@ -16,3 +16,4 @@ sqlalchemy
 motor
 pydantic
 asyncpg
+pymongo

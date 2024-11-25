@@ -1,7 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator, EmailStr, validator
 from enum import Enum
 from typing import Optional
-import uuid
 
 class UserStatus(str, Enum):
     active = 'Active'
@@ -13,11 +12,25 @@ class UserStatus(str, Enum):
 class UserCreate(BaseModel):
     username: str
     profile_image: Optional[str] = None  # Optional field for profile image
-    status: UserStatus = UserStatus.pending  # Default status as pending
-
+    status: UserStatus = UserStatus.pending # Default status as pending
+    email: str
+    @field_validator("username")
+    def validateId(cls, value: str):
+        if len(value) != 8 or not(value[1] >= 2 and value[2] >= 2):
+            raise ValueError('User Id not Accepted')
+        return value
+    @field_validator("email")
+    def validateEmail(cls, value: EmailStr):
+        if not value.endswith("@students.hebron.edu") or len(value) != 28:
+            raise ValueError("Email must belong to '@students.hebron.edu' domain.")
+        return value
     class Config:
         # Use UUID for ID generation
-        orm_mode = True
+        from_attributes = True
+
+class UserRequest(BaseModel):
+    id: str
+    username: str
 
 # Pydantic schema for user response
 class UserResponse(BaseModel):
@@ -27,4 +40,4 @@ class UserResponse(BaseModel):
     status: UserStatus
 
     class Config:
-        orm_mode = True  # Tells Pydantic to convert SQLAlchemy models to Pydantic models
+        from_attributes = True  # Tells Pydantic to convert SQLAlchemy models to Pydantic models

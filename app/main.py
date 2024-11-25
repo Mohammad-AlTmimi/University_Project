@@ -5,11 +5,11 @@ from sqlalchemy.orm import Session
 from requests import Request
 from app.database import get_db
 from .models import User
-#from chat import router as chat_router
+from app.routers.chat import router as chat_router
 
 app = FastAPI()
 
-#app.include_router(chat_router, prefix='/chat')
+app.include_router(chat_router, prefix='/userChat')
 
 @app.get("/")
 def root():

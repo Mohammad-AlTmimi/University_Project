@@ -2,7 +2,8 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 # Update the DATABASE_URL to use asyncpg driver
-DATABASE_URL = "postgresql+asyncpg://postgres:mysecretpassword@localhost:5432/postgres"
+DATABASE_URL = "postgresql+asyncpg://myuser:12345678@localhost:5432/mydatabase"
+
 
 # Create the asynchronous engine
 engine = create_async_engine(DATABASE_URL, echo=True)

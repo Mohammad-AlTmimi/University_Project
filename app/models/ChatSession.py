@@ -4,7 +4,7 @@ from sqlalchemy.orm import relationship
 from app.database import Base
 from datetime import datetime, timezone
 
-class chatSession(Base):
+class ChatSession(Base):
     __tablename__ = 'chatSessions'
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String(8), ForeignKey('users.id'), nullable=False)  # Match length with User ID

@@ -6,7 +6,7 @@ from requests import Request
 from app.database import get_db
 from .models import User
 from app.routers.chat import router as chat_router
-from app.middlewares.auth import createToken
+from app.controlers.user import createToken
 from app.schemas.user import UserCreate
 from app.controlers.user import createUser as crUser
 app = FastAPI()
@@ -20,10 +20,12 @@ def root():
 
 @app.post("/createUser")
 async def createUser(user: UserCreate, db: AsyncSession = Depends(get_db)):
-    print("iiii")
     newUser = await crUser(user, db)  # Ensure you await if it's an async function
-    print(newUser)
-    return newUser  # Return the created user or any necessary response
+    token = createToken(newUser.id , newUser.user_id)
+    print("hiihihihiih")
+    print(token)
+    print("hiihihihiih")
+    return {'User': newUser , 'Token': token}  # Return the created user or any necessary response
 
 @app.get("/db-status")
 async def db_status(db: AsyncSession = Depends(get_db)):

@@ -1,3 +1,3 @@
-from .auth import authenticate, createToken
+from .auth import authenticate
 
-__all__ = ['authenticate', 'createToken']
+__all__ = ['authenticate']

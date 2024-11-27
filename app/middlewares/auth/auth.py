@@ -6,15 +6,7 @@ from fastapi import HTTPException, status
 
 load_dotenv()
 
-def createToken(user_id , user_key):
-    SECRET_KEY = os.getenv('jwtToken')
-    payload = {
-        "user_id": user_id,
-        "user_key": user_key,
-        "exp": datetime.datetime.utcnow() + datetime.timedelta(minutes=30)
-    }
-    token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
-    return token
+
 
 def authenticate (token : str):
     try : 

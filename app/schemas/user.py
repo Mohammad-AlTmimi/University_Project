@@ -12,9 +12,10 @@ class userstatus(str, Enum):
 class UserCreate(BaseModel):
     username: str
     profile_image: Optional[str] = None  # Optional field for profile image
-    status: userstatus = userstatus.pending  # Default status as pending
+    status: userstatus = userstatus.active  # Default status as pending
     user_id: str
     email: str
+    password: str
 
     
     @field_validator("email")
@@ -26,7 +27,6 @@ class UserCreate(BaseModel):
         # Check that the second and third characters are '2' or greater lexicographically
         if not (value[1] >= '2' and value[2] >= '2'):
             raise ValueError("Email must have '2' or greater at the second and third positions after the '@'.")
-        
         return value
 
     class Config:

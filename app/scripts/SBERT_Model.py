@@ -13,7 +13,8 @@ def read_csv_file(path):
     return data
 
 # Read the labeled questions from the CSV
-labeled_questions = read_csv_file('./labeled_questions.csv')
+labeled_questions = read_csv_file('app/scripts/labeled_questions.csv')
+
 
 # Extract the questions and their labels
 questions, labels = labeled_questions['Question'].to_list(), labeled_questions['Category'].to_list()

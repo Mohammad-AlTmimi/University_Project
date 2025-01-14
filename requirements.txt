@@ -4,7 +4,6 @@ beautifulsoup4
 aiohttp
 numpy
 sentence-transformers
-scikit-learn
 torch
 pandas
 python-dotenv
@@ -17,3 +16,5 @@ motor
 pydantic
 asyncpg
 pymongo
+bcrypt==4.0.1
+passlib[bcrypt]

@@ -1,3 +1,4 @@
-from app.routers.chat import router
+from app.routers.chat import router as routerChat
+from app.routers.user import router as routerUser
 
-__all__ = ["router"]
+__all__ = ["routerChar"]

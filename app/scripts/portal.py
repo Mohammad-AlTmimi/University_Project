@@ -31,13 +31,17 @@ async def fetch_all_pages(url, headers, viewstate, viewstategen, eventvalidation
                 'radioStatus': '1',
                 '__EVENTTARGET': 'GridView1',
                 '__EVENTARGUMENT': f'Page${page_num}',
-                'lstColgsAjax': 'كلية تكنولوجيا المعلومات'
+                'lstColgsAjax': 'كلية تكنولوجيا المعلومات',
+                'lstDeptAjax': "علم الحاسوب"
             }
             tasks.append(fetch_page(session, url, headers, data, cookies))
+            # Delay between tasks to avoid ban and fire wall
+            await asyncio.sleep(0.5)
 
         portalPages = await asyncio.gather(*tasks)
         return portalPages
-
+    
+    
 def get_hidden_fields(soup):
     try:
         viewstate = soup.find('input', {'id': '__VIEWSTATE'})['value']
@@ -76,7 +80,8 @@ def scrapCourses(session_id):
         '__VIEWSTATEGENERATOR': viewstategen,
         '__EVENTVALIDATION': eventvalidation,
         'radioStatus': '1',
-        'lstColgsAjax': 'كلية تكنولوجيا المعلومات'
+        'lstColgsAjax': 'كلية تكنولوجيا المعلومات',
+        'lstDeptAjax': "علم الحاسوب"
     }
 
     try:

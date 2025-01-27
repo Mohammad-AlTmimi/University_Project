@@ -1,77 +1,75 @@
 import requests
 from bs4 import BeautifulSoup
-import aiohttp
-import asyncio
 import time
 from dotenv import load_dotenv
 import os
+import re
+
 load_dotenv()
 
-# in this updated code now we automated the process of scrap data from portal page by pass user
-# token to function 
-# for performance and scailability i will treat this code as a package which i will only import it in needed place
-# (for team meamber please read the code carefully make sure you understand every thing and if you have any question pls ask)
-# this code might have a few problem so it still under testing which my take alitle time as the portal page is closed 
-# this package still need to have the number of pages that need to scrap as we know give to page 
-# but it should be automated 
 
-
-async def fetch_page(session, url, headers, data, cookies):
-    async with session.post(url, headers=headers, data=data, cookies=cookies) as response:
-        return await response.text()
-
-async def fetch_all_pages(url, headers, viewstate, viewstategen, eventvalidation, cookies):
-    async with aiohttp.ClientSession() as session:
-        tasks = []
-        for page_num in range(2, 10):
-            data = {
-                '__VIEWSTATE': viewstate,
-                '__VIEWSTATEGENERATOR': viewstategen,
-                '__EVENTVALIDATION': eventvalidation,
-                'radioStatus': '1',
-                '__EVENTTARGET': 'GridView1',
-                '__EVENTARGUMENT': f'Page${page_num}',
-                'lstColgsAjax': 'كلية تكنولوجيا المعلومات',
-                'lstDeptAjax': "علم الحاسوب"
-            }
-            tasks.append(fetch_page(session, url, headers, data, cookies))
-            # Delay between tasks to avoid ban and fire wall
-            await asyncio.sleep(0.5)
-
-        portalPages = await asyncio.gather(*tasks)
-        return portalPages
-    
-    
+# Function to fetch the hidden fields from the page (viewstate, viewstategen, and eventvalidation)
 def get_hidden_fields(soup):
     try:
         viewstate = soup.find('input', {'id': '__VIEWSTATE'})['value']
         viewstategen = soup.find('input', {'id': '__VIEWSTATEGENERATOR'})['value']
         eventvalidation = soup.find('input', {'id': '__EVENTVALIDATION'})['value']
     except (TypeError, KeyError) as e:
-        raise ValueError("Missing required hidden fields")
+        raise ("Missing required hidden fields")
     return viewstate, viewstategen, eventvalidation
 
+# Function to fetch and parse the portal pages
+def fetch_page(session, url, headers, data, cookies):
+    response = session.post(url, headers=headers, data=data, cookies=cookies)
+    response.raise_for_status()
+    return response.text
+
+# Function to scrape all pages for courses data
+def fetch_all_pages(session, url, headers, viewstate, viewstategen, eventvalidation, cookies, soup):
+
+    tasks = [soup]
+    print([int(re.match(r"^(\d+)" , a['href'].split('Page$')[1]).group(1)) for a in tasks[-1].find_all('a', href=True) if 'Page$' in a['href']])
+    for page_num in range(2, max(
+    list(map(int, [
+    re.match(r"^(\d+)", x).group(1) 
+    for x in [a['href'].split('Page$')[1] for a in tasks[-1].find_all('a', href=True) if 'Page$' in a['href']]
+    if re.match(r"^(\d+)", x)
+]))
+)): # Page numbers are starting from 2
+        
+        data = {
+            '__VIEWSTATE': viewstate,
+            '__VIEWSTATEGENERATOR': viewstategen,
+            '__EVENTVALIDATION': eventvalidation,
+            'radioStatus': '1',
+            '__EVENTTARGET': 'GridView1',
+            '__EVENTARGUMENT': f'Page${page_num}',
+            'lstColgsAjax': 'كلية تكنولوجيا المعلومات',
+            'lstDeptAjax': "علم الحاسوب"
+        }
+        page_content = fetch_page(session, url, headers, data, cookies)
+        tasks.append(BeautifulSoup(page_content, 'html.parser'))
+
+        # Delay between tasks to avoid ban and firewall
+        time.sleep(0.5)
+
+    return tasks
+
+# Function to scrape course data from the portal
 def scrapCourses(session_id):
     url = os.getenv('URLA')
-
-    cookies = {
-        'ASP.NET_SessionId': session_id
-    }
-
+    cookies = {'ASP.NET_SessionId': session_id}
+    print('test')
+    # Fetch initial page and extract hidden fields (viewstate, viewstategen, eventvalidation)
     try:
-        response = requests.get(url, cookies=cookies)
-        response.raise_for_status()
+        with requests.Session() as session:
+            response = session.get(url, cookies=cookies)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, 'html.parser')
+            viewstate, viewstategen, eventvalidation = get_hidden_fields(soup)
     except requests.RequestException as e:
-        raise ValueError(f"Failed to fetch initial page: {str(e)}")
-
-    soup = BeautifulSoup(response.text, 'html.parser')
-
-    try:
-        viewstate, viewstategen, eventvalidation = get_hidden_fields(soup)
-    except e:
-        #print(e)
-        return []  # Returning an empty list if hidden fields are missing
-
+        raise (f"Failed to fetch initial page: {str(e)}")
+    print('test2')
     headers = {
         'Content-Type': 'application/x-www-form-urlencoded'
     }
@@ -83,59 +81,50 @@ def scrapCourses(session_id):
         'lstColgsAjax': 'كلية تكنولوجيا المعلومات',
         'lstDeptAjax': "علم الحاسوب"
     }
-
+    print('test3')
+    # Fetch the first page with the POST request and get subsequent pages
     try:
-        response = requests.post(url, headers=headers, data=data, cookies=cookies)
-        response.raise_for_status()
+        page_content = fetch_page(session, url, headers, data, cookies)
+        
+        soup = BeautifulSoup(page_content, 'html.parser')
+        viewstate, viewstategen, eventvalidation = get_hidden_fields(soup)
+        
+        portal_pages = fetch_all_pages(session, url, headers, viewstate, viewstategen, eventvalidation, cookies, soup)
+        print('hi1')
     except requests.RequestException as e:
-        raise ValueError(f"Error during POST request: {str(e)}")
+        raise (f"Error during POST request: {str(e)}")
+    print('test3')
 
-    soup = BeautifulSoup(response.text, 'html.parser')
-    viewstate, viewstategen, eventvalidation = get_hidden_fields(soup)
+    # Process the pages to extract course data
+    td_values = []
+    for page_soup in portal_pages:
+        rows = page_soup.findAll('tr', {'bgcolor': '#C8FFC8'})
+        td_values.extend([td.text.strip() for row in rows for td in row.find_all('td')])
 
-    async def main():
-        return await fetch_all_pages(url, headers, viewstate, viewstategen, eventvalidation, cookies)
+    return td_values
 
-    start_time = time.time()
-    portalPages = asyncio.run(main())
-    #print(f"Time taken: {time.time() - start_time} seconds")
-
-    if portalPages:
-        arrSoup = [BeautifulSoup(page, 'html.parser') for page in portalPages]
-        rows = [soup.findAll('tr', {'bgcolor': '#C8FFC8'}) for soup in arrSoup]
-        td_values = [td.text.strip() for r in rows for row in r for td in row.find_all('td')]
-        return td_values
-
-    return []
-
-
+# Function to scrape user courses
 def scrapUserCourses(session_id):
     url = os.getenv('URLB')
-    cookies = {
-        'ASP.NET_SessionId': session_id
-    }
-    
+    cookies = {'ASP.NET_SessionId': session_id}
+
     try:
-        response = requests.get(url, cookies=cookies)
-        response.raise_for_status()
+        with requests.Session() as session:
+            response = session.get(url, cookies=cookies)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, 'html.parser')
+
+            courses = [[cell.get_text(strip=True) for cell in row.find_all('td')] for row in soup.find_all('tr', {'bgcolor': '#F7F7DE'})]
+            print(f"Number of courses found: {len(courses)}")
+            print(courses)
     except requests.RequestException as e:
-        raise ValueError(f"Failed to fetch initial page: {str(e)}")
-    
-    soup = BeautifulSoup(response.text, 'html.parser')
-    courses = [[cell.get_text(strip=True) for cell in row.find_all('td')] for row in soup.find_all('tr', {'bgcolor': '#F7F7DE'})]
-
-    #courses = soup.find_all('tr' , {'bgcolor="#6B696B"'})
-    print(len(courses))
-    print(courses)
-    
-    
-    
-scrapUserCourses('1irpnm0mv1ibafsk5ot5zlgz')
+        raise (f"Failed to fetch user courses: {str(e)}")
 
 
-#   try:
-#       print(scrapCourses('1irpnm0mv1ibafsk5ot5zlgz'))
-#   except CustomError as e:
-#       print(f"CustomError occurred: {e}")
-#   except Exception as e:
-#       print(f"An unexpected error occurred: {e}")
+# Example usage
+try:
+    scrapUserCourses('1irpnm0mv1ibafsk5ot5zlgz')  # Replace with actual session ID
+    course_data = scrapCourses('1irpnm0mv1ibafsk5ot5zlgz')  # Replace with actual session ID
+    print(course_data)
+except Exception as e:
+    print(f"An unexpected error occurred: {e}")

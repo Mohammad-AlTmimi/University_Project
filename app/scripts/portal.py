@@ -121,10 +121,4 @@ def scrapUserCourses(session_id):
         raise (f"Failed to fetch user courses: {str(e)}")
 
 
-# Example usage
-try:
-    scrapUserCourses('1irpnm0mv1ibafsk5ot5zlgz')  # Replace with actual session ID
-    course_data = scrapCourses('1irpnm0mv1ibafsk5ot5zlgz')  # Replace with actual session ID
-    print(course_data)
-except Exception as e:
-    print(f"An unexpected error occurred: {e}")
+

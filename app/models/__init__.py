@@ -1,4 +1,4 @@
 from .user import User
-from .ChatSession import ChatSession
+from .chat import Chat
 
-__all__ = ["ChatSession" , "User"]
+__all__ = ["Chat" , "User"]

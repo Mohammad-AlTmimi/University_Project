@@ -31,13 +31,12 @@ async def createUser(user: UserCreate, db: AsyncSession = Depends(get_db)):
         
         password_hash = pwd_context.hash(user.password)
 
-        print("eeeeeeeeeeeee")
         newUser = User(
                 user_id=user.user_id,
                 username=user.username,
                 profile_image=user.profile_image,
                 status=user.status,
-                email=user.email,
+                email=user.user_id + '@students.hebron.edu',
                 password_hash=password_hash  # Store the hashed password
             )
         print("eeeeeeeeeeeee")

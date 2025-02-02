@@ -11,10 +11,6 @@ router = APIRouter()
 
 @router.post("/createUser")
 async def createUser(user: UserCreate, db: AsyncSession = Depends(get_db)):
-    print("Hellloooooooooooooooooooooooooooooo")
-    print("Hellloooooooooooooooooooooooooooooo")
-    print("Hellloooooooooooooooooooooooooooooo")
-    print("Hellloooooooooooooooooooooooooooooo")
     newUser = await crUser(user, db)  # Ensure you await if it's an async function
     
     token = createToken(newUser.id , newUser.user_id)

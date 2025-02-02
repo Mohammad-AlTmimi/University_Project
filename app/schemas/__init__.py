@@ -1,3 +1,3 @@
-from app.schemas.user import UserCreate, UserRequest
+from app.schemas.user import createUser
 
-__all__ = ['UserCreate' , 'UserRequest']
+__all__ = ['createUser']

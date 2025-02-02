@@ -3,12 +3,13 @@ import datetime
 import os
 from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from sqlalchemy.sql import text
 from passlib.context import CryptContext
-from app.schemas.user import UserCreate
+from app.schemas.user import createUser
 from app.models.user import User
 from app.database import get_db
+from app.models import User , UserPortal
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -26,34 +27,35 @@ def createToken(user_id, user_key):
     return token
 
 
-async def createUser(user: UserCreate, db: AsyncSession = Depends(get_db)):
+async def createUser(user: createUser, db: AsyncSession = Depends(get_db)):
     try:
-        
-        password_hash = pwd_context.hash(user.password)
+        # Create a new User object
+        newUser = User(password_hash=user.password)
 
-        newUser = User(
-                user_id=user.user_id,
-                username=user.username,
-                profile_image=user.profile_image,
-                status=user.status,
-                email=user.user_id + '@students.hebron.edu',
-                password_hash=password_hash  # Store the hashed password
-            )
-        print("eeeeeeeeeeeee")
-
+        # Add user to the session
         db.add(newUser)
-        print('eeeeeeeee')
-        await db.commit()
-        print('seesefe')
+        await db.commit() 
+        await db.refresh(newUser)  
 
-        await db.refresh(newUser)
-        print('seesefe')
+        # Create a UserPortal object and associate it with the new user
+        portal = UserPortal(
+            portal_id=user.portal_id, 
+            portal_password=user.portal_password, 
+            user_id=newUser.id
+        )
 
-        return newUser
-    except SQLAlchemyError as e:
-        print(e)
+        # Add user portal to the session
+        db.add(portal)
+        await db.commit()  # Commit changes for portal as well
+        await db.refresh(portal)  # Refresh portal to get any generated values
+
+        return {"user_id": newUser.id, "portal_id": portal.id}  # Return the created user and portal IDs
+
+    except IntegrityError:
+        # Rollback on error
         await db.rollback()
-        raise HTTPException(status_code=400, detail="Failed to create user")
+        raise ValueError("User or UserPortal already exists with the provided details.")
+
 
 
 async def searchUser(payload: dict, db: AsyncSession = Depends(get_db)):

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from app.schemas.user import UserCreate
+from app.schemas.user import createUser
 from app.controlers.user import createToken
 from app.database import get_db
 from app.controlers.user import createUser as crUser , searchUser
@@ -10,10 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 router = APIRouter()
 
 @router.post("/createUser")
-async def createUser(user: UserCreate, db: AsyncSession = Depends(get_db)):
+async def createUser(user: createUser, db: AsyncSession = Depends(get_db)):
     newUser = await crUser(user, db)  # Ensure you await if it's an async function
     
-    token = createToken(newUser.id , newUser.user_id)
+    token = createToken(newUser.user_id , newUser.portal_id)
     print(token)
     return {'User': newUser , 'Token': token}  # Return the created user or any necessary response
 

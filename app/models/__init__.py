@@ -1,5 +1,6 @@
-from .user import User
-from .chat import Chat
-from .user_portal import UserPortal
+from app.database import Base  # Import Base only
 
-__all__ = ["Chat" , "User" , "UserPortal"]
+# Import all models to ensure they are registered properly
+from app.models.user import User
+from app.models.chat import Chat
+from app.models.user_portal import UserPortal

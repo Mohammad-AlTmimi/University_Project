@@ -3,12 +3,38 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import Session
 from requests import Request
-from app.database import get_db
+from app.database import get_db, init_db
 from .models import User
 from app.routers.chat import router as chat_router
 from app.routers.user import router as user_router
+from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()  # Run database initialization
+    yield  # The app will run here
+    
+app = FastAPI(lifespan=lifespan)
+
+origins = [
+    "http://localhost:5173",  # Your frontend URL
+    "http://127.0.0.1:5173",  # If you're using another localhost variation
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,  # Allow only frontend origin
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
+)
+
+
+
+
+# Initialize the FastAPI app with the lifespan context manager
 
 app.include_router(chat_router, prefix='/chat')
 app.include_router(user_router, prefix='/user')

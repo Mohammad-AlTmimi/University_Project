@@ -9,12 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 
-@router.post("/createUser")
-async def createUser(user: createUser, db: AsyncSession = Depends(get_db)):
-    newUser = await crUser(user, db)  # Ensure you await if it's an async function
-    
+@router.post("/signup")
+async def signup(user: createUser): 
+    return {"data": 'Hello World'}
+    newUser = await crUser(user)  # Ensure you await if it's an async function
     token = createToken(newUser.user_id , newUser.portal_id)
-    print(token)
     return {'User': newUser , 'Token': token}  # Return the created user or any necessary response
 
 @router.post('/login')

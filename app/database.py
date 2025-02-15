@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 import asyncio
+from sqlalchemy.sql import text
 # Define Base here (Option One)
 Base = declarative_base()
 
@@ -21,9 +22,10 @@ async def init_db():
 async def get_db():
     """Dependency for getting a database session."""
     async with SessionLocal() as session:
-        try:
             yield session
-        finally:
-            await session.close() 
-
+#delete me in deployment plesase :)
+async def delete_table():
+    async with engine.begin() as conn: 
+        await conn.run_sync(lambda sync_conn: sync_conn.execute(text("DROP TABLE user_portal CASCADE")))
+        await conn.run_sync(lambda sync_conn: sync_conn.execute(text("DROP TABLE users CASCADE")))
 

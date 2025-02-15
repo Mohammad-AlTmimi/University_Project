@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from sqlalchemy.sql import text
 from passlib.context import CryptContext
-from app.schemas.user import createUser
+from app.schemas.user import createUser as userType
 from app.models.user import User
 from app.database import get_db
 from app.models import User , UserPortal
@@ -27,27 +27,32 @@ def createToken(user_id, user_key):
     return token
 
 
-async def createUser(user: createUser, db: AsyncSession = Depends(get_db)):
+async def createUser(user: userType, db: AsyncSession):
     try:
-        # Create a new User object
-        newUser = User(password_hash=user.password)
-
-        # Add user to the session
-        db.add(newUser)
-        await db.commit() 
-        await db.refresh(newUser)  
-
-        # Create a UserPortal object and associate it with the new user
+        # Step 1: Create the UserPortal object first
         portal = UserPortal(
             portal_id=user.portal_id, 
-            portal_password=user.portal_password, 
-            user_id=newUser.id
+            portal_password=user.portal_password
+        )
+        
+        # Add the UserPortal to the session and commit
+        db.add(portal)
+        await db.commit()
+        await db.refresh(portal)  # Ensure the portal is created and has the generated ID
+
+        # Step 2: Create the User object
+        newUser = User(
+            password_hash=user.password,  # Don't forget to hash the password
+            portal_id=portal.id  # Associate the portal with the user
         )
 
-        # Add user portal to the session
-        db.add(portal)
-        await db.commit()  # Commit changes for portal as well
-        await db.refresh(portal)  # Refresh portal to get any generated values
+        # Hash the password using the set_password method
+        newUser.set_password(user.password)
+
+        # Add the user to the session
+        db.add(newUser)
+        await db.commit()
+        await db.refresh(newUser)  # Refresh user to get the generated ID
 
         return {"user_id": newUser.id, "portal_id": portal.id}  # Return the created user and portal IDs
 
@@ -55,8 +60,6 @@ async def createUser(user: createUser, db: AsyncSession = Depends(get_db)):
         # Rollback on error
         await db.rollback()
         raise ValueError("User or UserPortal already exists with the provided details.")
-
-
 
 async def searchUser(payload: dict, db: AsyncSession = Depends(get_db)):
     try:

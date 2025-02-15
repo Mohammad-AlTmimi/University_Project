@@ -3,7 +3,6 @@ from app.middlewares.auth import authenticate
 from app.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import text
-from app.schemas.user import UserCreate
 from app.controlers.user import createToken
 from app.nodatabase import get_nodb
 from app.scripts import classify_question

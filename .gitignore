@@ -1,4 +1,5 @@
 labeled_questions.csv
 .env
 venv/
-app/__pycache__/
+*__pycache__/
+*.pyc

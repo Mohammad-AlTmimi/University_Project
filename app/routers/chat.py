@@ -7,11 +7,11 @@ from sqlalchemy.sql import text
 from app.controlers.user import createToken
 from app.nodatabase import get_nodb
 from app.ml_models.sbertmodel import classify_question
-from app.controlers.chat import creatChat, getChats, updateLastInteractoin
+from app.controlers.chat import creatChat, getChats, updateLastInteractoin,getChat
 from datetime import datetime, timezone
 from app.schemas.chat import MessagePayload
 from app.models.chat import Chat
-from app.schemas.chat import getMessagePayload
+from app.schemas.chat import GetChatsPayload, GetOneChat
 router = APIRouter()
 
 @router.post('/addmessage')
@@ -39,15 +39,15 @@ async def addMessage(
         if payload.chat_id == "newchat":
             chat_record = await creatChat(user_id , db)
         else:
-            resultChat = await db.execute(
-                text('SELECT * FROM chats WHERE id = :chat_id'),
-                {"chat_id": payload.chat_id}
+            oneChat = GetOneChat(
+                user_id=user_id,
+                chat_id=payload.chat_id
             )
-            chat_record = resultChat.fetchone()
+            chat_record = await getChat(oneChat , db)
 
         if not chat_record:
             raise HTTPException(status_code=404, detail="Chat not found")
-
+        
         # Correct payload attribute access
         message_text = payload.message
         message_type = await classify_question(message_text)
@@ -90,7 +90,7 @@ async def get_chats(
     
 ):
     try:
-        payload = getMessagePayload(
+        payload = GetChatsPayload(
             user_id = user.get("user_id"),
             start=start,
             end=end

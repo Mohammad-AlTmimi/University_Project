@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 from datetime import datetime
 from typing import Optional
 
@@ -6,14 +6,12 @@ class MessagePayload(BaseModel):
     chat_id: str
     message: str
 
-class getMessagePayload(BaseModel):
+class createMessage(BaseModel):
     user_id: str
-    start: int
-    end: int
-    
-from pydantic import BaseModel, Field, ValidationError, model_validator
+    chat_id: str
 
-class GetMessagePayload(BaseModel):
+    
+class GetChatsPayload(BaseModel):
     user_id: str
     start: int
     end: int
@@ -24,3 +22,9 @@ class GetMessagePayload(BaseModel):
         if (end - start) >= 10:
             raise ValueError("The difference between start and end must be less than 10")
         return values
+    
+class GetOneChat(BaseModel):
+    user_id: str
+    chat_id: str
+
+    

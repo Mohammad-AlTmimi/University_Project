@@ -27,7 +27,7 @@ def createToken(user_id, user_key):
         raise ValueError("SECRET_KEY not set in environment variables.")
     payload = {
         "user_id": user_id,
-        "user_key": user_key,
+        "portal_id": user_key,
         "exp": datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)
     }
     token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
@@ -36,54 +36,52 @@ def createToken(user_id, user_key):
 
 async def createUser(user: userType, db: AsyncSession):
     try:
-        # Step 1: Create the UserPortal object first
-        portal = UserPortal(
-            portal_id=user.portal_id, 
-            portal_password=user.portal_password
-        )
-        
-        db.add(portal)
+        async with db.begin():  # Start a transaction
+            # Step 1: Create the UserPortal object first
+            portal = UserPortal(
+                portal_id=user.portal_id, 
+                portal_password=user.portal_password
+            )
+            db.add(portal)
+            await db.flush()  # Flush to assign an ID before commit
+
+            # Step 2: Create the User object
+            newUser = User(
+                password_hash=user.password,
+                portal_id=portal.id,
+                name=user.name
+            )
+            newUser.set_password(user.password)
+
+            db.add(newUser)
+            await db.flush()  # Ensure data is staged for commit
+
+        # If no error occurs, commit happens automatically
         await db.commit()
-        await db.refresh(portal)
-
-        # Step 2: Create the User object
-        newUser = User(
-            password_hash=user.password,
-            portal_id=portal.id,
-            name=user.name
-        )
-
-        newUser.set_password(user.password)
-
-        db.add(newUser)
-        await db.commit()
-        await db.refresh(newUser)
-
         return {"user_id": newUser.id, "portal_id": portal.id}
 
     except IntegrityError:
         await db.rollback()
-        raise ValueError("User or UserPortal already exists with the provided details.")
+        raise HTTPException(status_code=403, detail="User or UserPortal already exists with the provided details.")
 
     except Exception as e:
         await db.rollback()
-        raise RuntimeError(f"An unexpected error occurred: {str(e)}")
-
+        raise HTTPException(status_code=404, detail=f"An unexpected error occurred: {str(e)}")
 
 async def searchUser(payload: loginUser, db: AsyncSession):
     try:
         result = await db.execute(
-        select(User).join(UserPortal).where(UserPortal.portal_id == payload['portal_id'])
+        select(User).join(UserPortal).where(UserPortal.portal_id == payload.portal_id)
         )
         user = result.scalar_one_or_none()
-        
-        if user and pwd_context.verify(payload['password'], user.password_hash) and user.status == UserStatus.active:
+
+        if user and pwd_context.verify(payload.password, user.password_hash) and user.status == UserStatus.active:
             return {
                     "user": {
                     "id": user.id,
                     "name": user.name,
                 },
-                "token": createToken(user.id, user.user_key)
+                "token": createToken(user.id, user.portal_id)
             }
         else:
             raise HTTPException(status_code=404, detail="Invalid credentials")

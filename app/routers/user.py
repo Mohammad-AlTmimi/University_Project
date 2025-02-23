@@ -4,7 +4,7 @@ from app.controlers.user import createToken
 from app.database import get_db
 from app.controlers.user import createUser as crUser , searchUser, signPortal
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from app.models.chat import Chat
 
 
 router = APIRouter()
@@ -25,15 +25,25 @@ async def signup(user: createUser , db: AsyncSession = Depends(get_db)):
 
 @router.post('/login')
 async def login(payload: loginUser, db: AsyncSession = Depends(get_db)):
-    """
-    Expects payload with:
-    {
-        "user_id": <user_id>,
-        "user_password": <user_password>
-    }
-    """
-    # Call searchUser with the full payload
-    user = await searchUser(payload, db)
+    try:
+        """
+        Expects payload with:
+        {
+            "portal_id": <portal_id>,
+            "password": <user_password>
+        }
+        """
+        # Call searchUser with the full payload
+        user = await searchUser(payload, db)
 
-    # Return success message or additional data
-    return {"message": "Login successful", "user": dict(user)}
+        # Return success message or additional data
+        return {"message": "Login successful", "user": dict(user)}
+    except HTTPException as http_exc:
+        raise http_exc  # Re-raise known HTTP exceptions to maintain status codes
+
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")  # Log for debugging (or use logging module)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
+        )

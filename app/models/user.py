@@ -1,12 +1,13 @@
 from __future__ import annotations
 import uuid
 from enum import Enum as PyEnum
-from sqlalchemy import Column, String, Enum as SQLAlchemyEnum, ForeignKey
+from sqlalchemy import Column, String, Enum as SQLAlchemyEnum, ForeignKey ,DateTime
 from sqlalchemy.orm import relationship, Mapped
 from sqlalchemy.orm import Session
 from sqlalchemy import event
 from app.database import Base
 from passlib.context import CryptContext
+from datetime import datetime, timezone
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -23,6 +24,8 @@ class User(Base):
     status = Column(SQLAlchemyEnum(UserStatus), nullable=False, default=UserStatus.active)
     password_hash = Column(String, nullable=False)
     portal_id = Column(String , ForeignKey('user_portal.id'), nullable=False)
+    created_at = Column(DateTime, default=datetime.now(timezone.utc).replace(tzinfo=None))
+
     name = Column(String)
 
 

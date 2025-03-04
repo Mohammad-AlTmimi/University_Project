@@ -55,6 +55,7 @@ async def updateLastInteractoin(chat_id: str, db: AsyncSession):
     chat = await db.get(Chat, chat_id)
     if chat:
         chat.update_last_interaction()  # This updates the specific chat's last_interaction
+        chat.update_messages_number()
         await db.commit()
         
 async def getChat(payload: GetOneChat, db: AsyncSession):

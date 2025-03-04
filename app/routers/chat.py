@@ -8,12 +8,14 @@ from app.controlers.user import createToken
 from app.nodatabase import get_nodb
 from app.ml_models.sbertmodel import classify_question
 from app.controlers.chat import creatChat, getChats, updateLastInteractoin,getChat
+from app.controlers.message import PageMessages
 from datetime import datetime, timezone
 from app.schemas.chat import MessagePayload
 from app.models.chat import Chat
-from app.schemas.chat import GetChatsPayload, GetOneChat
+from app.schemas.chat import GetChatsPayload, GetOneChat, GetMessages
 from app.controlers.ai import AIResponse
 from app.schemas.ai import MessageResponse
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 router = APIRouter()
 
@@ -22,7 +24,7 @@ async def addMessage(
     payload: MessagePayload,  # Use Pydantic model
     user: dict = Depends(authenticate), 
     db: AsyncSession = Depends(get_db),
-    nodb: dict = Depends(get_nodb),
+    nodb: AsyncIOMotorDatabase = Depends(get_nodb)
 ):
     try:
         user_id = user.get("user_id")
@@ -67,7 +69,7 @@ async def addMessage(
             "message": message_text,
             "type": message_type,
             "chat_id": chat_id,
-            "create_time": datetime.now(timezone.utc).replace(tzinfo=None)
+            "create_time": datetime.now(timezone.utc).replace(tzinfo=None),
         }
 
         response_message = {
@@ -75,22 +77,20 @@ async def addMessage(
             'message': AIMessage,  # Correctly access the first message
             'type': 'response',
             'chat_id': chat_id,
-            'create_time': datetime.now(timezone.utc).replace(tzinfo=None)
-        }
+            'create_time': datetime.now(timezone.utc).replace(tzinfo=None),
+        }   
 
         # Insert chat message to MongoDB
-        chat_collection = nodb["chats"]
-        result = chat_collection.insert_one(chat_message)
-        if not result.inserted_id:
-            raise HTTPException(status_code=500, detail="Failed to insert chat message into MongoDB")
-
-        # Insert response message to MongoDB
-        response_result = chat_collection.insert_one(response_message)
-        if not response_result.inserted_id:
-            raise HTTPException(status_code=500, detail="Failed to insert response message into MongoDB")
+        chat_collection = nodb["messages"]
+        result = await chat_collection.insert_one(chat_message)
+        response_result = await chat_collection.insert_one(response_message)
+        
+        if not result.inserted_id or not response_result.inserted_id:
+            raise HTTPException(status_code=500, detail="Failed to insert messages into MongoDB")
 
         # Update last interaction in SQLAlchemy
         await updateLastInteractoin(chat_id=chat_id , db=db)
+        
 
         # Return success response
         return {
@@ -138,3 +138,32 @@ async def get_chats(
 
     except Exception as e:
         return HTTPException(status_code=401 , detail=e)
+
+
+@router.get('/messages')
+async def getmessages(
+    user: dict = Depends(authenticate),
+    start: int = Query(1, alias="start"),   # Oldest chat requested
+    end: int = Query(10, alias="end"), # Newest chat requested
+    chat_id: str = Query(alias="chat_id"),
+    nodb: AsyncIOMotorDatabase = Depends(get_nodb)
+):
+    try:
+        user_id = user.get('user_id')
+        oneChat = GetMessages(
+            user_id=user_id,
+            chat_id=chat_id,
+            start= start,
+            end= end
+        )
+        print(user_id , chat_id)
+        messages_records = await PageMessages(oneChat , nodb)
+        if not messages_records:
+            raise HTTPException(status_code=500, detail="Failed to insert response message into MongoDB")
+        return {
+            'Token': user.get('Token'),
+            'messages': messages_records
+        }
+    except HTTPException as http_exc:
+        raise http_exc  # Re-raise known HTTP exceptions to maintain status codes
+    

@@ -10,7 +10,7 @@ class Chat(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     chat_number = Column(Integer, nullable = False)
     user_id = Column(String, ForeignKey('users.id'), nullable=False)
-    
+    messages_number = Column(Integer, nullable = False, default=0)
     # Store timestamp as timezone-aware datetime (TIMESTAMP WITH TIME ZONE)
     timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     
@@ -21,4 +21,6 @@ class Chat(Base):
     user = relationship('User', back_populates='chats')
 
     def update_last_interaction(self):
-        self.last_interaction = datetime.now(timezone.utc).replace(tzinfo=None)  # Remove tzinfo to match `TIMESTAMP WITHOUT TIME ZONE`
+        self.last_interaction = datetime.now(timezone.utc).replace(tzinfo=None) # Remove tzinfo to match `TIMESTAMP WITHOUT TIME ZONE`
+    def update_messages_number(self):
+        self.messages_number = self.messages_number + 2

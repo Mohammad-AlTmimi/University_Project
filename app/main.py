@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-
+from app.nodatabase import delete_nodb
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()  # Run database initialization
@@ -47,6 +47,7 @@ def root():
 @app.delete('/')
 async def delet():
     await delete_table()
+    await delete_nodb()
     return {'delete'}
 @app.get("/db-status")
 async def db_status(db: AsyncSession = Depends(get_db)):

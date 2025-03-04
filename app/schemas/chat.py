@@ -26,5 +26,13 @@ class GetChatsPayload(BaseModel):
 class GetOneChat(BaseModel):
     user_id: str
     chat_id: str
+    
+    
+class GetMessages(BaseModel):
+    user_id: str
+    chat_id: str
+    start: int
+    end: int
+
 
     

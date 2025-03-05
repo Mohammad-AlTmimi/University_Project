@@ -7,6 +7,7 @@ from app.database import get_db, init_db, delete_table
 from .models import User, UserPortal, Chat
 from app.routers.chat import router as chat_router
 from app.routers.user import router as user_router
+from app.routers.guest import router as guest_router
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from fastapi.exceptions import RequestValidationError
@@ -39,6 +40,7 @@ app.add_middleware(
 
 app.include_router(chat_router, prefix='/chat')
 app.include_router(user_router, prefix='/user')
+app.include_router(guest_router, prefix='/guest')
 
 
 @app.get("/")

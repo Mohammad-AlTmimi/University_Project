@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from app.schemas.user import createUser, loginUser
 from app.controlers.user import createToken
 from app.database import get_db
@@ -47,3 +47,11 @@ async def login(payload: loginUser, db: AsyncSession = Depends(get_db)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",
         )
+        
+@router.get('/changephoto')
+async def changephoto(
+    db: AsyncSession = Depends(get_db),
+    file: UploadFile = File(...)
+):
+    return 'complete when you have s3 bucket'
+    

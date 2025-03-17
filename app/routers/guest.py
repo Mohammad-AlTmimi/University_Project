@@ -75,7 +75,7 @@ async def addMessage(
         }
 
     except HTTPException as http_exc:
-        raise http_exc  # Re-raise known HTTP exceptions to maintain status codes
+        raise http_exc
 
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"Error: {str(e)}")

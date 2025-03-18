@@ -21,15 +21,19 @@ import aiohttp
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-def createToken(user_id, user_key):
+def createToken(user_id, user_key, type='Default'):
     SECRET_KEY = os.getenv('jwtToken')
     if not SECRET_KEY:
         raise ValueError("SECRET_KEY not set in environment variables.")
+    
     payload = {
-        "user_id": user_id,
-        "portal_id": user_key,
+        'user_id': user_id + ' ' + str(datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)),
+        "portal_id": user_key + ' ' + str(datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)),
         "exp": datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)
     }
+    if type != 'Default':
+        SECRET_KEY = os.getenv('jwtTokenResetPassword')
+        
     token = jwt.encode(payload, SECRET_KEY, algorithm="HS256")
     return token
 

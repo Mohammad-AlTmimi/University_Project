@@ -10,9 +10,12 @@ load_dotenv()
 
 
 # Authorization <Bear> token
-async def authenticate(Authorization: str = Header(...)) -> Dict[str, Any]:
+async def authenticate(
+    Authorization: str = Header(...), 
+    token_type: str = "Default"
+) -> Dict[str, Any]:
     try:
-        SECRET_KEY = os.getenv('jwtToken')
+        SECRET_KEY = os.getenv('jwtToken') if token_type == "Default" else os.getenv('jwtTokenResetPassword')
         if not SECRET_KEY:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -27,6 +30,12 @@ async def authenticate(Authorization: str = Header(...)) -> Dict[str, Any]:
             )
         token = Authorization.split(" ")[1]  # Extract token
         payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        if payload['user_id']:
+            payload['user_id'] = payload['user_id'].split(' ')[0]
+            
+        if 'portal_id' in payload:
+            payload['portal_id'] = payload['portal_id'].split(' ')[0]
+            
         payload['Token'] = createToken(payload.get('user_id'), payload.get('portal_id'))
         return payload  # Return the decoded JWT payload
 

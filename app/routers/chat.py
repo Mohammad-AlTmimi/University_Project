@@ -57,13 +57,32 @@ async def addMessage(
         message_text = payload.message
         message_type = await classify_question(message_text)
         chat_id = chat_record.id
+        oneChat = GetMessages(
+            user_id=user_id,
+            chat_id=chat_id,
+            start= chat_record.chat_number - 6,
+            end= chat_record.chat_number
+        )
+        messages_records = await PageMessages(oneChat, nodb) if payload.chat_id != 'newchat' else []
 
+        messages = []
+        for elm in messages_records:
+            if payload.chat_id == 'newchat':
+                break
+            if elm.type != 'response': 
+                messages.append({'role': 'user', 'content': elm.message})
+            else:  
+                messages.append({'role': 'assistant', 'content': elm.template + '\n' + elm.message})
+        
+        messages.append({"role": "user", "content": message_text})
+        
+        print(messages)
         aiPayload = MessageResponse(
-            messages=[{"role": "user", "content": message_text}],
+            messages=messages,
             type=message_type
         )
         AIMessage = await AIResponse(aiPayload)
-
+        print(AIMessage)
         chat_message = {
             "user_id": user_id,
             "message": message_text,
@@ -78,6 +97,7 @@ async def addMessage(
             'type': 'response',
             'chat_id': chat_id,
             'create_time': datetime.now(timezone.utc).replace(tzinfo=None),
+            'template': ''
         }   
 
         # Insert chat message to MongoDB
@@ -90,7 +110,6 @@ async def addMessage(
 
         # Update last interaction in SQLAlchemy
         await updateLastInteractoin(chat_id=chat_id , db=db)
-        
 
         # Return success response
         return {
@@ -156,7 +175,6 @@ async def getmessages(
             start= start,
             end= end
         )
-        print(user_id , chat_id)
         messages_records = await PageMessages(oneChat , nodb)
         if not messages_records:
             raise HTTPException(status_code=500, detail="Failed to insert response message into MongoDB")

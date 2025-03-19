@@ -60,32 +60,17 @@ async def AIResponse(payload: MessageResponse):
         "Content-Type": "application/json"
     }
     
-    # Apply template based on the request type
     template = templates.get(payload.type, "{question}")
-    formatted_prompt = template.format(question=payload.messages[-1])
+    
+    last_messages = payload.messages
+    
+    formatted_prompt = template.format(question=last_messages[-1]['content']) if last_messages else ""
 
-    # Construct the messages array
     request_payload = {
-        "messages": [{"role": "system", "content": formatted_prompt}] + payload.messages,
-        "max_tokens": 150,  # You may adjust this based on your needs
+        "messages": [{"role": "system", "content": formatted_prompt}] + last_messages,
+        "max_tokens": 150,  # Adjust based on your needs
         "temperature": temperatures.get(payload.type, 0.7)
     }
-    
-    # Handling additional capabilities like max fine-tune count, max user file count, etc.
-    capabilities = {
-        "MaxFineTuneCount": 100,
-        "MaxRunningFineTuneCount": 3,
-        "MaxUserFileCount": 50,
-        "MaxTrainingFileSize": 512000000,
-        "MaxUserFileImportDurationInHours": 1,
-        "MaxFineTuneJobDurationInHours": 720,
-        "MaxEvaluationRunDurationInHours": 5,
-        "MaxRunningEvaluationCount": 5
-    }
-
-    # Check capabilities if necessary
-    # Example: Ensure the request does not exceed the max fine-tune count or file size
-    # (Add your conditions here based on your system's use case)
     
     async with aiohttp.ClientSession() as session:
         async with session.post(url, headers=headers, json=request_payload) as response:
@@ -93,8 +78,4 @@ async def AIResponse(payload: MessageResponse):
                 data = await response.json()
                 return data["choices"][0]["message"]["content"]
             else:
-                raise HTTPException(status_code=response.status , detail=await response.text())
-
-# Example to test the function
-# response = await AIResponse(payload)
-# print(response)
+                raise HTTPException(status_code=response.status, detail=await response.text())

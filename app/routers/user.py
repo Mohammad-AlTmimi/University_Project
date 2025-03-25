@@ -100,3 +100,32 @@ async def resetpassword(
 
     except HTTPException as httpx:
         raise httpx
+    
+    
+@router.post('/changepassword')
+async def changepassword(
+    payload: ResetPasswordRequest,  
+    user: dict = Depends(authenticate), 
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        user_id = user.get("user_id")
+        
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+
+        if not user: 
+            raise HTTPException(status_code=404, detail="No user found")
+
+        user.password_hash = payload.password  
+        user.set_password(payload.password)  
+        await db.commit()
+        return {"password": payload.password}
+    
+    except HTTPException as httpx:
+        raise httpx
+    except Exception as e:
+        raise e
+    
+    
+    

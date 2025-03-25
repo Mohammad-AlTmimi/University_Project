@@ -9,7 +9,7 @@ Base = declarative_base()
 DATABASE_URL = "postgresql+asyncpg://admin:admin123@localhost:5432/testproject"
 
 # Create async engine
-engine = create_async_engine(DATABASE_URL, echo=True)
+engine = create_async_engine(DATABASE_URL, echo=False)
 
 # Create session factory
 SessionLocal = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)

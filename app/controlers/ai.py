@@ -59,16 +59,23 @@ async def AIResponse(payload: MessageResponse):
         "api-key": API_KEY, 
         "Content-Type": "application/json"
     }
-    
+
     template = templates.get(payload.type, "{question}")
     
-    last_messages = payload.messages
+    last_messages = [
+    {
+        "role": "assistant" if message.get("type") == "response" else "user",
+        "content": f"Template: \n{templates.get(message.get('type'), '')}\nAI Response:\n{message.get('message', '')}"
+    }
+    if message.get("type", "") != "" else message
+    for message in payload.messages
+]
     
     formatted_prompt = template.format(question=last_messages[-1]['content']) if last_messages else ""
-
+    print(last_messages)
     request_payload = {
         "messages": [{"role": "system", "content": formatted_prompt}] + last_messages,
-        "max_tokens": 150,  # Adjust based on your needs
+        "max_tokens": 150,  
         "temperature": temperatures.get(payload.type, 0.7)
     }
     

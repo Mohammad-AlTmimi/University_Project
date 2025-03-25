@@ -12,15 +12,14 @@ async def PageMessages(payload: GetMessages , db: AsyncIOMotorDatabase):
         chat_collection = db['messages']
 
         # Pagination parameters
-        offset = payload.start - 1  # Start index
-        limit = payload.end - payload.start + 1  # Number of messages to fetch
-        sample_message = await chat_collection.find_one()
+        offset = payload.start - 1  
+        limit = payload.end - payload.start + 1  
         
-        # Fetch messages with sorting and pagination
         chat_cursor = chat_collection.find(
             {'user_id': payload.user_id, 'chat_id': payload.chat_id}
-        ).sort('create_time', 1).skip(offset).limit(limit)  # ✅ Add skip for pagination
-        # Convert cursor to list (since Motor returns an async cursor)
+        ).sort('create_time', 1).skip(offset).limit(limit)
+
+
         chat_messages = await chat_cursor.to_list()
         chat_messages = [{**chat, '_id': str(chat['_id'])} for chat in chat_messages]
 

@@ -60,33 +60,32 @@ async def addMessage(
         oneChat = GetMessages(
             user_id=user_id,
             chat_id=chat_id,
-            start= chat_record.chat_number - 6,
+            start= max(1 , chat_record.chat_number - 6),
             end= chat_record.chat_number
         )
         messages_records = await PageMessages(oneChat, nodb) if payload.chat_id != 'newchat' else []
-
         messages = []
-        for elm in messages_records:
-            if payload.chat_id == 'newchat':
-                break
-            if elm.type != 'response': 
-                messages.append({'role': 'user', 'content': elm.message})
-            else:  
-                messages.append({'role': 'assistant', 'content': elm.template + '\n' + elm.message})
-        
+
+        if payload.chat_id != 'newchat':  
+            for elm in messages_records:
+                
+                if elm.get('type') != 'question':  
+                    messages.append({'role': 'assistant', 'content': elm.get('template', '') + '\n' + elm.get('message', '') , 'type': elm.get('type' , '')})
+                else:  
+                    messages.append({'role': 'user', 'content': elm.get('message', '')})
+
         messages.append({"role": "user", "content": message_text})
-        
-        print(messages)
+
+
         aiPayload = MessageResponse(
             messages=messages,
             type=message_type
         )
         AIMessage = await AIResponse(aiPayload)
-        print(AIMessage)
         chat_message = {
             "user_id": user_id,
             "message": message_text,
-            "type": message_type,
+            "type": 'question',
             "chat_id": chat_id,
             "create_time": datetime.now(timezone.utc).replace(tzinfo=None),
         }
@@ -94,7 +93,7 @@ async def addMessage(
         response_message = {
             'user_id': user_id,
             'message': AIMessage,  # Correctly access the first message
-            'type': 'response',
+            'type': message_type,
             'chat_id': chat_id,
             'create_time': datetime.now(timezone.utc).replace(tzinfo=None),
             'template': ''

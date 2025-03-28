@@ -1,3 +1,3 @@
-from .auth import authenticate
+from .userauth import authenticate
 
 __all__ = ['authenticate']

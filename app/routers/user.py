@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Header
-from app.schemas.user import createUser, loginUser, ForgetPasswordRequest, ResetPasswordRequest
+from app.schemas.user import createUser, loginUser, ForgetPasswordRequest, ResetPasswordRequest, ChangePasswordRequest
 from app.controlers.user import createToken
 from app.database import get_db
 from app.controlers.user import createUser as crUser , searchUser, signPortal
@@ -8,6 +8,10 @@ from app.models.chat import Chat
 from app.middlewares.auth import authenticate
 from app.models import User , UserPortal
 from sqlalchemy.future import select
+from passlib.context import CryptContext
+
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 router = APIRouter()
 
@@ -104,7 +108,7 @@ async def resetpassword(
     
 @router.post('/changepassword')
 async def changepassword(
-    payload: ResetPasswordRequest,  
+    payload: ChangePasswordRequest,  
     user: dict = Depends(authenticate), 
     db: AsyncSession = Depends(get_db),
 ):
@@ -116,6 +120,8 @@ async def changepassword(
 
         if not user: 
             raise HTTPException(status_code=404, detail="No user found")
+        if not pwd_context.verify(payload.password, user.password_hash):
+            raise HTTPException(status_code=404, detail="Wrong Password")
 
         user.password_hash = payload.password  
         user.set_password(payload.password)  

@@ -26,9 +26,12 @@ def createToken(user_id, user_key, type='Default'):
     if not SECRET_KEY:
         raise ValueError("SECRET_KEY not set in environment variables.")
     
+    expiration_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)
+    expiration_timestamp_ms = int(expiration_time.timestamp() * 1000)
+
     payload = {
-        'user_id': user_id + ' ' + str(datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)),
-        "portal_id": user_key + ' ' + str(datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)),
+        'user_id': f"{user_id} {expiration_timestamp_ms}",
+        'portal_id': f"{user_key} {expiration_timestamp_ms}",
         "exp": datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)
     }
     if type != 'Default':

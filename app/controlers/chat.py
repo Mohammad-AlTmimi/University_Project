@@ -60,7 +60,6 @@ async def updateLastInteractoin(chat_id: str, db: AsyncSession):
         
 async def getChat(payload: GetOneChat, db: AsyncSession):
     try:
-        # Using SQLAlchemy's 'and_' for multiple conditions
         result = await db.execute(
             select(Chat).where(
                 and_(

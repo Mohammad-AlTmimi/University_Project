@@ -22,9 +22,8 @@ async def signup(user: createUser , db: AsyncSession = Depends(get_db)):
         user.name = name
         newUser = await crUser(user , db)  # Ensure you await if it's an async function
         token = createToken(newUser['user_id'] , newUser['portal_id'])
-        return {'User': newUser , 'Token': token, 'Name': name}  # Return the created user or any necessary response
+        return {'User': newUser , 'Token': token, 'Name': name}
     except HTTPException as e:
-        # If an HTTPException was raised in signPortal, this will be caught here
         raise e 
     except Exception as e:
         return (e)
@@ -120,7 +119,7 @@ async def changepassword(
 
         if not user: 
             raise HTTPException(status_code=404, detail="No user found")
-        if not pwd_context.verify(payload.password, user.password_hash):
+        if not pwd_context.verify(payload.old_password, user.password_hash):
             raise HTTPException(status_code=404, detail="Wrong Password")
 
         user.password_hash = payload.password  

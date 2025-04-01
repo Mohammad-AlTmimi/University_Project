@@ -60,32 +60,31 @@ async def addMessage(
         oneChat = GetMessages(
             user_id=user_id,
             chat_id=chat_id,
-            start= max(1 , chat_record.chat_number - 6),
-            end= chat_record.chat_number
+            start= max(1 , chat_record.messages_number - 6),
+            end= chat_record.messages_number
         )
         messages_records = await PageMessages(oneChat, nodb) if payload.chat_id != 'newchat' else []
         messages = []
-
+        print(chat_record.messages_number , messages_records)
         if payload.chat_id != 'newchat':  
-            for elm in messages_records:
-                
-                if elm.get('type') != 'question':  
-                    messages.append({'role': 'assistant', 'content': elm.get('template', '') + '\n' + elm.get('message', '') , 'type': elm.get('type' , '')})
+            for elm in messages_records:                
+                if elm.get('type' , '') != 'question':  
+                    messages.append({'role': 'user', 'content': elm.get('message', '') , 'type': elm.get('type' , '')})
                 else:  
-                    messages.append({'role': 'user', 'content': elm.get('message', '')})
+                    messages.append({'role': 'system', 'content': elm.get('message', '')})
 
-        messages.append({"role": "user", "content": message_text})
+        messages.append({"role": "user", "content": message_text , 'type': message_type})
 
 
         aiPayload = MessageResponse(
-            messages=messages,
-            type=message_type
+            messages=messages
         )
         AIMessage = await AIResponse(aiPayload)
+        
         chat_message = {
             "user_id": user_id,
             "message": message_text,
-            "type": 'question',
+            "type": message_type,
             "chat_id": chat_id,
             "create_time": datetime.now(timezone.utc).replace(tzinfo=None),
         }
@@ -93,12 +92,11 @@ async def addMessage(
         response_message = {
             'user_id': user_id,
             'message': AIMessage,  # Correctly access the first message
-            'type': message_type,
+            'type': 'question',
             'chat_id': chat_id,
-            'create_time': datetime.now(timezone.utc).replace(tzinfo=None),
-            'template': ''
+            'create_time': datetime.now(timezone.utc).replace(tzinfo=None)
         }   
-
+        print('hello 1')
         # Insert chat message to MongoDB
         chat_collection = nodb["messages"]
         result = await chat_collection.insert_one(chat_message)
@@ -109,7 +107,7 @@ async def addMessage(
 
         # Update last interaction in SQLAlchemy
         await updateLastInteractoin(chat_id=chat_id , db=db)
-
+        print('hello 2')
         # Return success response
         return {
             "message": "Chat added successfully", 

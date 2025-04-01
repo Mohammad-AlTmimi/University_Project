@@ -9,7 +9,7 @@ API_VERSION = os.getenv("API_VERSION")
 
 templates = {
     'General University Question': """
-    You are a virtual assistant for Hebron University.
+    You are a virtual assistant Name MiLo (Mind Logic) for Hebron University.
     Answer the student's question accurately and logically.
 
     ### Thought Process:
@@ -25,7 +25,7 @@ templates = {
     ### Response:
 """,
     'Build Table': """
-    You are a chatbot assistant for Hebron University students.
+    You are a chatbot assistant Name MiLo (Mind Logic) for Hebron University students.
     Your task is to generate a table based on the student's semester courses.
     
     ### Thought Process:
@@ -59,26 +59,22 @@ async def AIResponse(payload: MessageResponse):
         "api-key": API_KEY, 
         "Content-Type": "application/json"
     }
-
-    template = templates.get(payload.type, "{question}")
-    
-    last_messages = [
-    {
-        "role": "assistant" if message.get("type") == "response" else "user",
-        "content": f"Template: \n{templates.get(message.get('type'), '')}\nAI Response:\n{message.get('message', '')}"
-    }
-    if message.get("type", "") != "" else message
-    for message in payload.messages
-]
-    
-    formatted_prompt = template.format(question=last_messages[-1]['content']) if last_messages else ""
-    print(last_messages)
+    print(payload.messages)
+    print('--------------------------------------')
+    messages = [
+        {
+            'role': 'user',
+            'content': templates.get(message.get('type'), '').format(question=message.get('content', ''))
+        } if message.get('role') == 'user' else message
+        for message in payload.messages
+    ]
+    print(messages)
     request_payload = {
-        "messages": [{"role": "system", "content": formatted_prompt}] + last_messages,
+        "messages": messages,
         "max_tokens": 150,  
-        "temperature": temperatures.get(payload.type, 0.7)
+        "temperature": temperatures.get(payload.messages[-1].get('type'), 0.7)
     }
-    
+    print(request_payload.get('messages'))
     async with aiohttp.ClientSession() as session:
         async with session.post(url, headers=headers, json=request_payload) as response:
             if response.status // 100 == 2:

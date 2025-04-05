@@ -37,9 +37,7 @@ async def getChats(payload: GetChatsPayload , db: AsyncSession):
         stmt = (
             select(Chat)
             .where(Chat.user_id == payload.user_id)
-            .order_by(Chat.last_interaction.desc())  # Order by most recent last_interaction
-            .offset(payload.start - 1)  # Skip the first `start` chats
-            .limit(payload.end - payload.start)  # Get chats between start and end range
+            .order_by(Chat.last_interaction.desc()) 
         )
         result = await db.execute(stmt)
         chats = result.scalars().all()

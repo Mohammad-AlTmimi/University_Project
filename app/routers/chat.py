@@ -129,16 +129,12 @@ async def addMessage(
 @router.get("/chats/")
 async def get_chats(
     user: dict = Depends(authenticate),
-    start: int = Query(1, alias="start"),   # Oldest chat requested
-    end: int = Query(10, alias="end"),      # Newest chat requested
     db: AsyncSession = Depends(get_db)
     
 ):
     try:
         payload = GetChatsPayload(
             user_id = user.get("user_id"),
-            start=start,
-            end=end
         )
 
         chats = await getChats(payload, db)

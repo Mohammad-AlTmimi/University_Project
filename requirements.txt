@@ -19,3 +19,5 @@ pymongo
 bcrypt==4.0.1
 passlib[bcrypt]
 openai
+sqlalchemy_utils
+psycopg2-binary

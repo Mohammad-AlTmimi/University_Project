@@ -133,6 +133,16 @@ async def get_chats(
     
 ):
     try:
+        user_id = user.get("user_id")
+        resultUser = await db.execute(
+            text('SELECT * FROM users WHERE id = :user_id'), 
+            {"user_id": user_id}
+        )
+        user_record = resultUser.fetchone()
+
+        if not user_record:
+            raise HTTPException(status_code=404, detail="User not found")
+
         payload = GetChatsPayload(
             user_id = user.get("user_id"),
         )

@@ -21,3 +21,4 @@ passlib[bcrypt]
 openai
 sqlalchemy_utils
 psycopg2-binary
+python-multipart

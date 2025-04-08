@@ -3,9 +3,14 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.sql import text
 from sqlalchemy import create_engine
 from sqlalchemy_utils import database_exists, create_database
+
+from dotenv import load_dotenv
 import os
 
-# Define Base
+env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+load_dotenv(dotenv_path=env_path)
+
+
 Base = declarative_base()
 print('-'*100)
 print(os.getenv('SYNC_URL_DATABASE'))

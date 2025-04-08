@@ -1,11 +1,13 @@
 import requests
 from bs4 import BeautifulSoup
 import time
-from dotenv import load_dotenv
-import os
 import re
 
-load_dotenv()
+from dotenv import load_dotenv
+import os
+
+env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+load_dotenv(dotenv_path=env_path)
 
 
 # Function to fetch the hidden fields from the page (viewstate, viewstategen, and eventvalidation)

@@ -102,7 +102,13 @@ async def searchUser(payload: loginUser, db: AsyncSession):
 
 async def signPortal(portalId: str, portalPassword: str):
     url = 'https://portal.hebron.edu/Default.aspx'
-    
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Referer': url,
+    }
     
     async with aiohttp.ClientSession() as session:
         # First, get the login page to extract hidden fields

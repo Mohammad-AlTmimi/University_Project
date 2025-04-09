@@ -12,30 +12,22 @@ load_dotenv(dotenv_path=env_path)
 
 
 Base = declarative_base()
-print('-'*100)
-print(os.getenv('SYNC_URL_DATABASE'))
 
-# Database connection URL (async)
-DATABASE_URL = os.getenv('ASYNC_URL_INSTANCE')
 
-# Sync connection URL for database creation
+DATABASE_URL = ''
+sync_engine = ''
+
 SYNC_DATABASE_URL = os.getenv('SYNC_URL_DATABASE')
+if os.environ.get('RELOAD_MODE') == 'true':
+    DATABASE_URL = "postgresql+asyncpg://admin:admin123@localhost:5432/testproject"
+else :
+    DATABASE_URL = os.getenv('ASYNC_URL_INSTANCE')
+    sync_engine = create_engine(SYNC_DATABASE_URL)
 
 # Async Engine
 engine = create_async_engine(DATABASE_URL, echo=False)
-
-# Sync Engine
-sync_engine = create_engine(SYNC_DATABASE_URL)
-
-# Session setup
 SessionLocal = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 
-# Ensure database exists (sync)
-if not database_exists(sync_engine.url):
-    create_database(sync_engine.url)
-    print("Database created!")
-else:
-    print("Database already exists.")
 
 async def init_db():
     """Create tables asynchronously."""
@@ -43,14 +35,9 @@ async def init_db():
         await conn.run_sync(Base.metadata.create_all)
 
 async def get_db():
-    """Dependency for getting a database session."""
     async with SessionLocal() as session:
         yield session
 
-async def get_db():
-    """Dependency for getting a database session."""
-    async with SessionLocal() as session:
-            yield session
 #delete me in deployment plesase :)
 async def delete_table():
     async with engine.begin() as conn: 
@@ -67,6 +54,6 @@ async def create_async_database():
         print("Async Database already exists!")
 
 async def lifespan(app):
-    await create_async_database()  # Ensure async database is created
-    await init_db()  # Run database initialization
+    await create_async_database()  
+    await init_db()  
     yield

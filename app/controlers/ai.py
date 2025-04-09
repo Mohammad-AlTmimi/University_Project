@@ -3,6 +3,9 @@ from app.schemas.ai import MessageResponse
 from fastapi import HTTPException
 from dotenv import load_dotenv
 import os
+from fastapi.responses import StreamingResponse
+import json
+
 
 env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
 load_dotenv(dotenv_path=env_path)
@@ -65,8 +68,8 @@ async def AIResponse(payload: MessageResponse):
         "api-key": API_KEY, 
         "Content-Type": "application/json"
     }
-    print(payload.messages)
-    print('--------------------------------------')
+
+    # Prepare the message format
     messages = [
         {
             'role': 'user',
@@ -75,16 +78,46 @@ async def AIResponse(payload: MessageResponse):
         for message in payload.messages
     ]
     print(messages)
+
+    # Prepare the request payload
     request_payload = {
         "messages": messages,
         "max_tokens": 150,  
-        "temperature": temperatures.get(payload.messages[-1].get('type'), 0.7)
+        "temperature": temperatures.get(payload.messages[-1].get('type'), 0.7),
+        "stream": True  # Enable streaming of the response
     }
-    print(request_payload.get('messages'))
+
     async with aiohttp.ClientSession() as session:
         async with session.post(url, headers=headers, json=request_payload) as response:
-            if response.status // 100 == 2:
-                data = await response.json()
-                return data["choices"][0]["message"]["content"]
-            else:
-                raise HTTPException(status_code=response.status, detail=await response.text())
+            if response.status // 100 != 2:
+                raise Exception(f"Error: {await response.text()}")
+
+            buffer = ""
+            async for chunk in response.content.iter_any():
+                if chunk:
+                    chunk_str = chunk.decode('utf-8')
+                    buffer += chunk_str
+
+                    # Process complete SSE events (delimited by \n\n)
+                    while "\n\n" in buffer:
+                        event, buffer = buffer.split("\n\n", 1)
+                        for line in event.split("\n"):
+                            if line.startswith("data:"):
+                                data_str = line[5:].strip()  # Remove "data:" prefix
+                                if data_str == "[DONE]":
+                                    return  # Stop streaming
+                                if not data_str:
+                                    continue
+                                try:
+                                    data = json.loads(data_str)
+                                    # Check if choices exists and is non-empty
+                                    if not data.get("choices") or len(data["choices"]) == 0:
+                                        continue  # Skip chunks with no choices
+                                    # Check if delta exists
+                                    delta = data["choices"][0].get("delta", {})
+                                    content = delta.get("content", "")
+                                    if content:
+                                        yield content
+                                except json.JSONDecodeError as e:
+                                    print(f"Error parsing JSON: {data_str} ({e})")
+                                    continue

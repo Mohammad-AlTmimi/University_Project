@@ -16,8 +16,10 @@ from app.schemas.chat import GetChatsPayload, GetOneChat, GetMessages
 from app.controlers.ai import AIResponse
 from app.schemas.ai import MessageResponse
 from motor.motor_asyncio import AsyncIOMotorDatabase
-
+from fastapi.responses import StreamingResponse
+import json
 router = APIRouter()
+
 
 @router.post('/addmessage')
 async def addMessage(
@@ -79,51 +81,55 @@ async def addMessage(
         aiPayload = MessageResponse(
             messages=messages
         )
-        AIMessage = await AIResponse(aiPayload)
-        
-        chat_message = {
-            "user_id": user_id,
-            "message": message_text,
-            "type": message_type,
-            "chat_id": chat_id,
-            "create_time": datetime.now(timezone.utc).replace(tzinfo=None),
-        }
 
-        response_message = {
-            'user_id': user_id,
-            'message': AIMessage,  # Correctly access the first message
-            'type': 'question',
-            'chat_id': chat_id,
-            'create_time': datetime.now(timezone.utc).replace(tzinfo=None)
-        }   
-        print('hello 1')
-        # Insert chat message to MongoDB
-        chat_collection = nodb["messages"]
-        result = await chat_collection.insert_one(chat_message)
-        response_result = await chat_collection.insert_one(response_message)
-        
-        if not result.inserted_id or not response_result.inserted_id:
-            raise HTTPException(status_code=500, detail="Failed to insert messages into MongoDB")
+        async def stream_response():
+            response_message = {
+                'user_id': user_id,
+                'message': '', 
+                'type': 'question',
+                'chat_id': chat_id,
+                'create_time': datetime.now(timezone.utc).replace(tzinfo=None)
+            }
 
-        # Update last interaction in SQLAlchemy
-        await updateLastInteractoin(chat_id=chat_id , db=db)
-        print('hello 2')
-        # Return success response
-        return {
-            "message": "Chat added successfully", 
-            "message_id": str(result.inserted_id),
-            'chat_id': chat_id,
-            "TYPE": message_type,
-            "AI Response": AIMessage,
-            "Token": user.get('Token')
-        }
+            chat_message = {
+                "user_id": user_id,
+                "message": message_text,
+                "type": message_type,
+                "chat_id": chat_id,
+                "create_time": datetime.now(timezone.utc).replace(tzinfo=None),
+            }
+            chat_collection = nodb["messages"]
+            result = await chat_collection.insert_one(chat_message)
+            
+            if not result.inserted_id:
+                raise HTTPException(status_code=500, detail="Failed to insert chat message into MongoDB")
+            
+            async for ai_message_chunk in AIResponse(aiPayload):
+                response_message['message'] += ai_message_chunk
+                yield f"data: {json.dumps({'content': ai_message_chunk})}\n\n"
+
+            yield "data: [DONE]\n\n"
+
+            response_result = await chat_collection.insert_one(response_message)
+            if not response_result.inserted_id:
+                raise HTTPException(status_code=500, detail="Failed to insert AI response into MongoDB")
+
+            await updateLastInteractoin(chat_id=chat_id, db=db)
+
+        return StreamingResponse(
+            stream_response(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive"
+            }
+        )
 
     except HTTPException as http_exc:
-        raise http_exc  # Re-raise known HTTP exceptions to maintain status codes
+        raise http_exc  
 
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"Error: {str(e)}")
-
 
    
 @router.get("/chats/")

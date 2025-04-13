@@ -41,10 +41,7 @@ async def getChats(payload: GetChatsPayload , db: AsyncSession):
         )
         result = await db.execute(stmt)
         chats = result.scalars().all()
-        if chats:
-            return chats
-        else :
-            raise HTTPException(status_code=404, detail="Invalid credentials")
+        return chats
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

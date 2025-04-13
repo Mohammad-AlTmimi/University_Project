@@ -76,7 +76,7 @@ async def addMessage(
                     messages.append({'role': 'system', 'content': elm.get('message', '')})
 
         messages.append({"role": "user", "content": message_text , 'type': message_type})
-
+        payload.chat_id = chat_id
 
         aiPayload = MessageResponse(
             messages=messages
@@ -108,7 +108,7 @@ async def addMessage(
                 response_message['message'] += ai_message_chunk
                 yield f"data: {json.dumps({'content': ai_message_chunk})}\n\n"
 
-            yield "data: [DONE]\n\n"
+            yield f"data: {json.dumps({'status': '[DONE]', 'chat_id': payload.chat_id})}\n\n"
 
             response_result = await chat_collection.insert_one(response_message)
             if not response_result.inserted_id:
@@ -145,34 +145,31 @@ async def get_chats(
             {"user_id": user_id}
         )
         user_record = resultUser.fetchone()
-
         if not user_record:
             raise HTTPException(status_code=404, detail="User not found")
-
+        
         payload = GetChatsPayload(
             user_id = user.get("user_id"),
         )
 
         chats = await getChats(payload, db)
-
-        if not chats:
-            raise HTTPException(status_code=404, detail="No chats found in this range")
+        
         return {
                 'Chats': chats,
                 'Token': user.get('Token')
             }
     except HTTPException as http_exc:
-        raise http_exc  # Re-raise known HTTP exceptions to maintain status codes
+        raise http_exc
 
     except Exception as e:
-        return HTTPException(status_code=401 , detail=e)
+        raise HTTPException(status_code=401 , detail=e)
 
 
 @router.get('/messages')
 async def getmessages(
     user: dict = Depends(authenticate),
-    start: int = Query(1, alias="start"),   # Oldest chat requested
-    end: int = Query(10, alias="end"), # Newest chat requested
+    start: int = Query(1, alias="start"), 
+    end: int = Query(10, alias="end"), 
     chat_id: str = Query(alias="chat_id"),
     nodb: AsyncIOMotorDatabase = Depends(get_nodb)
 ):

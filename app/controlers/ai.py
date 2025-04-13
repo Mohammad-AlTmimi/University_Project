@@ -20,6 +20,7 @@ templates = {
     'General University Question': """
     You are a virtual assistant Name MiLo (Mind Logic) for Hebron University.
     Answer the student's question accurately and logically.
+    You can Use Markdown Formating to answer
 
     ### Thought Process:
     1. Identify the **main topic** of the question.

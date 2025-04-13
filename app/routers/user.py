@@ -24,9 +24,12 @@ async def signup(user: createUser , db: AsyncSession = Depends(get_db)):
         token = createToken(newUser['user_id'] , newUser['portal_id'])
         return {'User': newUser , 'Token': token, 'Name': name}
     except HTTPException as e:
+        print(e)
         raise e 
+    
     except Exception as e:
-        return (e)
+        print(e)
+        raise (e)
 
 @router.post('/login')
 async def login(payload: loginUser, db: AsyncSession = Depends(get_db)):

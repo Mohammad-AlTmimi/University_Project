@@ -16,7 +16,8 @@ from app.schemas.chat import GetChatsPayload, GetOneChat, GetMessages
 from app.controlers.ai import AIResponse
 from app.schemas.ai import MessageResponse
 from motor.motor_asyncio import AsyncIOMotorDatabase
-
+import json
+from fastapi.responses import StreamingResponse
 router = APIRouter()
 
 @router.post('/addmessage')
@@ -30,54 +31,57 @@ async def addMessage(
         message_text = payload.message
         message_type = await classify_question(message_text)
         chat_id = 'Guest'
-
+        messages = []
+        messages.append({"role": "user", "content": message_text , 'type': message_type})
         aiPayload = MessageResponse(
-            messages=[{"role": "user", "content": message_text}],
-            type=message_type
+            messages=messages
         )
-        AIMessage = await AIResponse(aiPayload)
+        async def stream_response():
+            chat_message = {
+                "user_id": user_id,
+                "message": message_text,
+                "type": message_type,
+                "chat_id": chat_id,
+                "create_time": datetime.now(timezone.utc).replace(tzinfo=None),
+            }
 
-        chat_message = {
-            "user_id": user_id,
-            "message": message_text,
-            "type": message_type,
-            "chat_id": chat_id,
-            "create_time": datetime.now(timezone.utc).replace(tzinfo=None),
-        }
+            response_message = {
+                'user_id': user_id,
+                'message': '', 
+                'type': 'response',
+                'chat_id': chat_id,
+                'create_time': datetime.now(timezone.utc).replace(tzinfo=None),
+            }
+            chat_collection = nodb["messages"]
+            result = await chat_collection.insert_one(chat_message)
+            
+            if not result.inserted_id:
+                raise HTTPException(status_code=500, detail="Failed to insert chat message into MongoDB")
+            
+            async for ai_message_chunk in AIResponse(aiPayload):
+                response_message['message'] += ai_message_chunk
+                yield f"data: {json.dumps({'content': ai_message_chunk})}\n\n"
 
-        response_message = {
-            'user_id': user_id,
-            'message': AIMessage,  # Correctly access the first message
-            'type': 'response',
-            'chat_id': chat_id,
-            'create_time': datetime.now(timezone.utc).replace(tzinfo=None),
-        }   
+            yield f"data: {json.dumps({'status': '[DONE]', 'chat_id': payload.chat_id})}\n\n"
+            print('hi')
+            response_result = await chat_collection.insert_one(response_message)
+            if not response_result.inserted_id:
+                raise HTTPException(status_code=500, detail="Failed to insert AI response into MongoDB")
 
-        # Insert chat message to MongoDB
-        chat_collection = nodb["messages"]
-        result = await chat_collection.insert_one(chat_message)
-        response_result = await chat_collection.insert_one(response_message)
-        
-        if not result.inserted_id or not response_result.inserted_id:
-            raise HTTPException(status_code=500, detail="Failed to insert messages into MongoDB")
+            await updateLastInteractoin(chat_id=chat_id, db=db)
 
-        # Update last interaction in SQLAlchemy
-        await updateLastInteractoin(chat_id=chat_id , db=db)
-        
-
-        # Return success response
-        return {
-            "message": "Chat added successfully", 
-            "message_id": str(result.inserted_id),
-            'chat_id': chat_id,
-            "TYPE": message_type,
-            "AI Response": AIMessage
-        }
+        return StreamingResponse(
+            stream_response(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive"
+            }
+        )
 
     except HTTPException as http_exc:
-        raise http_exc
+        raise http_exc  
 
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"Error: {str(e)}")
-
 

@@ -67,7 +67,6 @@ async def addMessage(
         )
         messages_records = await PageMessages(oneChat, nodb) if payload.chat_id != 'newchat' else []
         messages = []
-        print(chat_record.messages_number , messages_records)
         if payload.chat_id != 'newchat':  
             for elm in messages_records:                
                 if elm.get('type' , '') != 'question':  

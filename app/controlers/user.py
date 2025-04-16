@@ -6,7 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from sqlalchemy.sql import text
 from passlib.context import CryptContext
 from app.schemas.user import createUser as userType
-from app.models.user import User, UserStatus
+from app.models.user import User, UserStatus, UserUpdate
 from app.database import get_db
 from app.models import User , UserPortal
 from app.schemas.user import loginUser
@@ -59,7 +59,8 @@ async def createUser(user: userType, db: AsyncSession):
             newUser = User(
                 password_hash=user.password,
                 portal_id=portal.id,
-                name=user.name
+                name=user.name,
+                updated = UserUpdate.Yes
             )
             newUser.set_password(user.password)
 

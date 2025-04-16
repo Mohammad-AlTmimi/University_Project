@@ -15,6 +15,9 @@ class UserStatus(PyEnum):
     active = 'active'
     inactive = 'inactive'
     suspended = 'suspended'
+class UserUpdate(PyEnum):
+    Yes = 'Yes'
+    No = 'No'
 
 class User(Base):
     __tablename__ = 'users'
@@ -27,7 +30,7 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.now(timezone.utc).replace(tzinfo=None))
 
     name = Column(String)
-
+    updated = Column(SQLAlchemyEnum(UserUpdate), default=UserUpdate.No)
 
     # One-to-one relationship with UserPortal
     portal: Mapped["UserPortal"] = relationship("UserPortal", back_populates="user", uselist=False, cascade="all, delete")

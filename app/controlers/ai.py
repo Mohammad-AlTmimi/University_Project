@@ -75,11 +75,9 @@ async def AIResponse(payload: MessageResponse):
         {
             'role': 'user',
             'content': templates.get(message.get('type'), '').format(question=message.get('content', ''))
-        } if message.get('role') == 'user' else message
+        } if message.get('role' , '') == 'user' else message
         for message in payload.messages
     ]
-    print(messages)
-
     # Prepare the request payload
     request_payload = {
         "messages": messages,

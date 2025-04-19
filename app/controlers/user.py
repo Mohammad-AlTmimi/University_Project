@@ -169,7 +169,39 @@ async def signPortal(portalId: str, portalPassword: str):
                 return student_name.text.strip() if student_name else "Student name not found"
             else:
                 raise HTTPException(status_code=403, detail="Unauthorized student to sign up")
-                    
+      
+
+def extract_detail_blocks(html_text):
+    soup = BeautifulSoup(html_text, 'html.parser')
+    detail_blocks_data = []
+
+    for block in soup.select('div.DetailBlock'):
+        try:
+
+            course_type = block.select_one('.DetailBlockHeader').get_text(strip=True)
+
+
+            remaining_span = block.select_one('span[id*="lblHoursRemaining_"]')
+            remaining_hours = remaining_span.get_text(strip=True) if remaining_span else "0"
+
+            course_rows = block.select('table[id*="gv_DtlCourses_"] tr')[1:]
+
+            courses = []
+            for row in course_rows:
+                cells = [unicodedata.normalize('NFKC', cell.get_text(strip=True)).replace('\xa0', ' ') for cell in row.find_all('td')]
+                if cells:
+                    courses.append(cells)
+
+            detail_blocks_data.append({
+                "course_type": course_type,
+                "remaining_hours": int(remaining_hours),
+                "courses": courses
+            })
+        except Exception as e:
+            print(f"Error parsing block: {e}")
+
+    return detail_blocks_data
+              
 async def scrapUserCourses(session_id, portal_id):
     url = os.getenv('URLB')
     cookies = {'ASP.NET_SessionId': session_id}
@@ -194,16 +226,11 @@ async def scrapUserCourses(session_id, portal_id):
                     match = re.search(r"\d+", element)
                     if match:
                         number = match.group()
-                courses = [
-                [
-                    unicodedata.normalize('NFKC', cell.get_text(strip=True)).replace('\xa0', ' ')
-                    for cell in row.find_all('td')
-                ]
-                for row in soup.find_all('tr', style=lambda s: s and '#F7F7DE' in s)
-            ]
+                blocks_data = extract_detail_blocks(text)
 
-                print(f"Number of courses found: {len(courses)}")
-                print(courses)
+
+                print(f"Number of courses found: {len(blocks_data)}")
+                print(blocks_data)
                 collection = db['student_data']
                 semester = os.getenv('semester')
                 print(number)
@@ -211,7 +238,7 @@ async def scrapUserCourses(session_id, portal_id):
                     {
                         'semester': semester,
                         'portal_id': portal_id,
-                        'courses': courses,
+                        'courses': blocks_data,
                         'active': True,
                         'planNumber': str(number)     
                     }

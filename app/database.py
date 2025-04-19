@@ -3,6 +3,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.sql import text
 from sqlalchemy import create_engine
 from sqlalchemy_utils import database_exists, create_database
+from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 import os
@@ -36,7 +37,10 @@ async def init_db():
 
 async def get_db():
     async with SessionLocal() as session:
-        yield session
+        try:
+            yield session
+        finally:
+            await session.close()
 
 #delete me in deployment plesase :)
 async def delete_table():
@@ -45,7 +49,6 @@ async def delete_table():
         await conn.run_sync(lambda sync_conn: sync_conn.execute(text("DROP TABLE users CASCADE")))
         await conn.run_sync(lambda sync_conn: sync_conn.execute(text("DROP TABLE chats CASCADE")))
 
-# Create database asynchronously if it does not exist
 async def create_async_database():
     if not await database_exists(engine.url):
         await create_database(engine.url)

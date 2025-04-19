@@ -91,11 +91,11 @@ async def addMessage(
             }
 
             chat_message = {
-                "user_id": user_id,
-                "message": message_text,
-                "type": message_type,
-                "chat_id": chat_id,
-                "create_time": datetime.now(timezone.utc).replace(tzinfo=None),
+                "user_id": user_id, #Foriegh Key from User Table
+                "message": message_text, # String Column for Message
+                "type": message_type, # Type of the message column(if it is from chat gpt it consider question if it from user it's (Build Chat, General Question ...))
+                "chat_id": chat_id, # Forieghn Key from Chat Table
+                "create_time": datetime.now(timezone.utc).replace(tzinfo=None), #Date Time for create the response
             }
             chat_collection = nodb["messages"]
             result = await chat_collection.insert_one(chat_message)

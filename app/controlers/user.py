@@ -1,6 +1,6 @@
 import jwt
 import datetime
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from sqlalchemy.sql import text
@@ -16,7 +16,9 @@ import aiohttp
 from dotenv import load_dotenv
 import os
 import unicodedata
-
+import asyncio
+from app.nodatabase import get_nodb
+import re
 env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
 load_dotenv(dotenv_path=env_path)
 
@@ -127,6 +129,7 @@ async def loginPortal(portalId: str, portalPassword: str):
 async def signPortal(portalId: str, portalPassword: str):
     viewstate , viewstategenerator, eventvalidation = await loginPortal(portalId=portalId, portalPassword=portalPassword)
     async with aiohttp.ClientSession() as session:
+        background_tasks: BackgroundTasks
         url = 'https://portal.hebron.edu/Default.aspx'
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -155,34 +158,64 @@ async def signPortal(portalId: str, portalPassword: str):
             major = soup.find('span', id='std_info1_std_major')
             student_name = soup.find('span', id='std_info1_std_name')
             session_id = session.cookie_jar.filter_cookies(url).get('ASP.NET_SessionId') 
-            print(session_id)
-            await scrapUserCourses(session_id=session_id)
-            if college and major and college.text.strip() == 'كلية تكنولوجيا المعلومات' and major.text.strip() == 'علم الحاسوب':
+            
+                
+            if (
+                college and major
+                and college.text.strip() == 'كلية تكنولوجيا المعلومات'
+                and major.text.strip() == 'علم الحاسوب'
+            ):
+                asyncio.create_task(scrapUserCourses(session_id=session_id, portal_id=portalId))
                 return student_name.text.strip() if student_name else "Student name not found"
             else:
                 raise HTTPException(status_code=403, detail="Unauthorized student to sign up")
-
-async def scrapUserCourses(session_id):
+                    
+async def scrapUserCourses(session_id, portal_id):
     url = os.getenv('URLB')
     cookies = {'ASP.NET_SessionId': session_id}
-
+    
     try:
         async with aiohttp.ClientSession(cookies=cookies) as session:
-            async with session.get(url) as response:
+            headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Referer': url,
+        }
+            async with session.get(url, headers=headers) as response:
+                db = await get_nodb()
                 response.raise_for_status()
                 text = await response.text()
                 soup = BeautifulSoup(text, 'html.parser')
-
+                element = soup.find(string=re.compile("الخطة الدراســـية"))
+                number = ""
+                if element:
+                    match = re.search(r"\d+", element)
+                    if match:
+                        number = match.group()
                 courses = [
                 [
                     unicodedata.normalize('NFKC', cell.get_text(strip=True)).replace('\xa0', ' ')
                     for cell in row.find_all('td')
                 ]
-                for row in soup.find_all('tr', {'bgcolor': '#F7F7DE'})
+                for row in soup.find_all('tr', style=lambda s: s and '#F7F7DE' in s)
             ]
 
                 print(f"Number of courses found: {len(courses)}")
                 print(courses)
+                collection = db['student_data']
+                semester = os.getenv('semester')
+                print(number)
+                await collection.insert_one(
+                    {
+                        'semester': semester,
+                        'portal_id': portal_id,
+                        'courses': courses,
+                        'active': True,
+                        'planNumber': str(number)     
+                    }
+                )
 
     except aiohttp.ClientError as e:
-        raise Exception(f"Failed to fetch user courses: {str(e)}")
+        raise Exception(f"Failed to fetch courses from {url}: {str(e)}")

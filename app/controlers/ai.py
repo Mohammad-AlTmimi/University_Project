@@ -81,7 +81,7 @@ async def AIResponse(payload: MessageResponse):
     # Prepare the request payload
     request_payload = {
         "messages": messages,
-        "max_tokens": 150,  
+        "max_tokens": 400,  
         "temperature": temperatures.get(payload.messages[-1].get('type'), 0.7),
         "stream": True  # Enable streaming of the response
     }

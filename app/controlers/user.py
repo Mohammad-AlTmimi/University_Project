@@ -190,6 +190,8 @@ def extract_detail_blocks(html_text):
             for row in course_rows:
                 cells = [unicodedata.normalize('NFKC', cell.get_text(strip=True)).replace('\xa0', ' ') for cell in row.find_all('td')]
                 if cells:
+                    cells[-1] = cells[-1].split(',')
+                    cells[2] = int(cells[2])
                     courses.append(cells)
 
             detail_blocks_data.append({

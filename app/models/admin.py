@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 class Admin(Base):
-    __tablename__: 'admins'
+    __tablename__= 'admins'
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     portal_id = Column(String, nullable=False, unique=True)
     name = Column(String, nullable=False)

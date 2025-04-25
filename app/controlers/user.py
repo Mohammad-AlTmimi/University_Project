@@ -192,6 +192,7 @@ def extract_detail_blocks(html_text):
                 if cells:
                     cells[-1] = cells[-1].split(',')
                     cells[2] = int(cells[2])
+                    cells[0] = cells[0].split('/')[0]
                     courses.append(cells)
 
             detail_blocks_data.append({

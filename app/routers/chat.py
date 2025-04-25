@@ -1,6 +1,6 @@
 import asyncio
 from fastapi import APIRouter, Depends, HTTPException, Query
-from app.middlewares.auth import authenticate
+from app.middlewares.auth.userauth import authenticate as userAuthenticate
 from app.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import text
@@ -24,7 +24,7 @@ router = APIRouter()
 @router.post('/addmessage')
 async def addMessage(
     payload: MessagePayload,  # Use Pydantic model
-    user: dict = Depends(authenticate), 
+    user: dict = Depends(userAuthenticate), 
     db: AsyncSession = Depends(get_db),
     nodb: AsyncIOMotorDatabase = Depends(get_nodb)
 ):
@@ -133,7 +133,7 @@ async def addMessage(
    
 @router.get("/chats/")
 async def get_chats(
-    user: dict = Depends(authenticate),
+    user: dict = Depends(userAuthenticate),
     db: AsyncSession = Depends(get_db)
     
 ):
@@ -166,7 +166,7 @@ async def get_chats(
 
 @router.get('/messages')
 async def getmessages(
-    user: dict = Depends(authenticate),
+    user: dict = Depends(userAuthenticate),
     start: int = Query(1, alias="start"), 
     end: int = Query(10, alias="end"), 
     chat_id: str = Query(alias="chat_id"),

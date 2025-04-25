@@ -5,7 +5,7 @@ from app.database import get_db
 from app.controlers.user import createUser as crUser , searchUser, signPortal
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.chat import Chat
-from app.middlewares.auth import authenticate
+from app.middlewares.auth.userauth import authenticate
 from app.models import User , UserPortal
 from sqlalchemy.future import select
 from passlib.context import CryptContext

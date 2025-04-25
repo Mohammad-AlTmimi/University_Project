@@ -47,11 +47,17 @@ async def getChats(payload: GetChatsPayload , db: AsyncSession):
         raise HTTPException(status_code=500, detail=str(e))
     
 async def updateLastInteractoin(chat_id: str, db: AsyncSession):
-    chat = await db.get(Chat, chat_id)
-    if chat:
-        chat.update_last_interaction()  # This updates the specific chat's last_interaction
-        chat.update_messages_number()
-        await db.commit()
+    try:
+        chat = await db.get(Chat, chat_id)
+        if chat:
+            chat.update_last_interaction()
+            chat.update_messages_number()
+            await db.commit()
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+    finally:
+        await db.close()
         
 async def getChat(payload: GetOneChat, db: AsyncSession):
     try:

@@ -5,8 +5,8 @@ from dotenv import load_dotenv
 import os
 from fastapi.responses import StreamingResponse
 import json
-
-
+from app.services.templates import buildTableTemplate
+from app.schemas.ai import PortalPayload
 env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
 load_dotenv(dotenv_path=env_path)
 
@@ -63,10 +63,12 @@ temperatures = {
 
 
 async def AIResponse(payload: MessageResponse):
-    url = f"{ENDPOINT}/openai/deployments/{DEPLOYMENT_NAME}/chat/completions?api-version={API_VERSION}"
-    
+    url = "https://api.openai.com/v1/chat/completions"
+
+    if payload.messages[-1].get('type') == 'Build Table':
+        await buildTableTemplate(PortalPayload(portal_id='22110542'))
     headers = {
-        "api-key": API_KEY, 
+        "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
     }
 
@@ -80,6 +82,7 @@ async def AIResponse(payload: MessageResponse):
     ]
     # Prepare the request payload
     request_payload = {
+        "model": "gpt-3.5-turbo",
         "messages": messages,
         "max_tokens": 400,  
         "temperature": temperatures.get(payload.messages[-1].get('type'), 0.7),

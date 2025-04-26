@@ -53,4 +53,20 @@ async def stopservice(
         raise HTTPException(
             status_code=500, detail=f"Failed to {payload.action} service: {str(e)}"
         )
+
+@router.get("/services")
+async def get_services(user: dict = Depends(authenticate)):
+    try:
+        allowed_services = ["SERVICE_BUILD_TABLE_QUESTION_ENABLED"]
+        
+        statuses = {}
+        for service in allowed_services:
+            if os.getenv(service) == 'start':
+                statuses[service] = 'start'
+            else :
+                statuses[service] = 'stop'
+        
+        return statuses
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch services: {str(e)}")
     

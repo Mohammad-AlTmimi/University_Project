@@ -44,7 +44,7 @@ def createToken(admin_id, portal_id):
     expiration_timestamp_ms = int(expiration_time.timestamp() * 1000)
 
     payload = {
-        'user_id': f"{admin_id} {expiration_timestamp_ms}",
+        'admin_id': f"{admin_id} {expiration_timestamp_ms}",
         'portal_id': f"{portal_id} {expiration_timestamp_ms}",
         "exp": datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)
     }

@@ -29,11 +29,11 @@ async def authenticate(
         token = Authorization.split(" ")[1]  # Extract token
         payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
         if payload['admin_id'] and payload['portal_id']:
-            payload['admin_id'] = payload['user_id'].split(' ')[0]
+            payload['admin_id'] = payload['admin_id'].split(' ')[0]
             payload['portal_id'] = payload['portal_id'].split(' ')[0]
         else :
             raise HTTPException(status_code=401, detail='Token Is Not Suitable')
-        payload['Token'] = createToken(payload.get('user_id'), payload.get('portal_id'))
+        payload['Token'] = createToken(payload.get('admin_id'), payload.get('portal_id'))
         return payload  # Return the decoded JWT payload
 
     except IndexError:

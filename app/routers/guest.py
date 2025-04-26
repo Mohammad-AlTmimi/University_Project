@@ -1,14 +1,10 @@
 import asyncio
 from fastapi import APIRouter, Depends, HTTPException, Query
-from app.middlewares.auth import authenticate
 from app.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql import text
-from app.controlers.user import createToken
 from app.nodatabase import get_nodb
 from app.ml_models.sbertmodel import classify_question
 from app.controlers.chat import creatChat, getChats, updateLastInteractoin,getChat
-from app.controlers.message import PageMessages
 from datetime import datetime, timezone
 from app.schemas.chat import MessagePayload
 from app.models.chat import Chat

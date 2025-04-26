@@ -13,7 +13,7 @@ async def authenticate(
     token_type: str = "Default"
 ) -> Dict[str, Any]:
     try:
-        SECRET_KEY = os.getenv('jwtToken') if token_type == "Default" else os.getenv('jwtTokenResetPassword')
+        SECRET_KEY = os.getenv('jwtTokenAdmin') if token_type == "Default" else os.getenv('jwtTokenResetPassword')
         if not SECRET_KEY:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -11,7 +11,7 @@ from dotenv import load_dotenv, set_key, dotenv_values
 import os
 import asyncio
 
-env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
 load_dotenv(dotenv_path=env_path)
 
 

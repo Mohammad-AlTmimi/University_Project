@@ -4,6 +4,7 @@ from fastapi import HTTPException
 env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
 load_dotenv(dotenv_path=env_path)
 from app.nodatabase import get_nodb
+from collections import defaultdict
 def calculateValue(payload):
     try:    
         SEMESTER = int(os.getenv('semester'))
@@ -30,19 +31,27 @@ async def buildTableTemplate(payload):
         db_user_data = mongodb['student_data']
         db_availabe_course = mongodb['semester_courses']
         user_data_cursor = db_user_data.find({'portal_id': payload.portal_id})
-        availabe_course_cursor = db_availabe_course.find({'active': True})
+        availabe_course_cursor = db_availabe_course.find().sort('create_time', -1).limit(1)
 
         user_data = await user_data_cursor.to_list(length=None)
         availabe_course = await availabe_course_cursor.to_list(length=None)
+        course_doc = availabe_course[0]
 
-        admin_course = {}
-        for element in availabe_course['courses']:
-            couser_code = element[0]
-            course_info = element[1:]
+        if 'courses' not in course_doc:
+            raise ValueError("No courses field in the newest active course")
+
+        admin_course = defaultdict(list)
+
+        for element in course_doc['courses']:
+            if 'CRS_NO' not in element:
+                raise ValueError(f"Missing CRS_NO in course data: {element}")
+            course_code = element['CRS_NO']
+            course_info = {k: v for k, v in element.items() if k != 'CRS_NO'}
             admin_course[course_code].append(course_info)
             
         user_course = []
         user_available_course = []
+        print(user_data)
         for category in user_data['courses']:
             for course in category['courses']:
                 user_code = course[0]

@@ -35,25 +35,36 @@ templates = {
     ### Response:
 """,
     'Build Table': """
-    You are a chatbot assistant Name MiLo (Mind Logic) for Hebron University students.
-    Your task is to generate a table based on the student's semester courses.
+    You are MiLo (Mind Logic), a smart assistant for Hebron University students.
+    Your task is to generate a semester schedule based on the given courses and user preferences.
     
     ### Thought Process:
-    1. Extract the **required semester** from the question.
-    2. Identify the **courses** that match the given semester.
-    3. Format the courses into a **structured table** with:
+    1. Extract the **required semester** and **student's preferences** (like specific courses or time preferences) from the question.
+    2. Identify the matching **courses** based on the semester.
+    3. **Rules to follow strictly**:
+       - **No time conflicts**: Courses must not overlap in their scheduled times.
+       - **No duplicate courses**: Do not select the same course multiple times even if offered at different times.
+       - **Priority Order**:
+         1. First, **respect the student's requests** exactly as they asked.
+         2. Then, use the **Priority** field to choose the best available option.
+    4. Format the selected courses into a **structured table** with:
        - Course Name  
-       - Course Code  
+       - Course Code (or Class Number)  
        - Instructor  
        - Time & Location  
-    4. If missing details, politely ask the student for clarification.
-    5. Present the response in **table format**.
-    
-    ### Question:
+    5. If any required information is missing or unclear, politely ask the student for clarification.
+    6. Always present the output neatly in **table format**.
+
+    ### Given Courses:
+    {courses}
+
+    ### Student's Question:
     {question}
-    
+
     ### Response:
 """
+
+
 }
 
 temperatures = {
@@ -64,9 +75,9 @@ temperatures = {
 
 async def AIResponse(payload: MessageResponse):
     url = "https://api.openai.com/v1/chat/completions"
-
+    tem = ''
     if payload.messages[-1].get('type') == 'Build Table':
-        await buildTableTemplate(PortalPayload(portal_id='22110542'))
+        await buildTableTemplate(PortalPayload(portal_id=payload.portal_id))
     headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
@@ -86,7 +97,7 @@ async def AIResponse(payload: MessageResponse):
         "messages": messages,
         "max_tokens": 400,  
         "temperature": temperatures.get(payload.messages[-1].get('type'), 0.7),
-        "stream": True  # Enable streaming of the response
+        "stream": True  
     }
 
     async with aiohttp.ClientSession() as session:

@@ -30,7 +30,7 @@ async def addMessage(
 ):
     try:
         user_id = user.get("user_id")
-
+        portal_id = user.get("portal_id")
         # Fetch user
         resultUser = await db.execute(
             text('SELECT * FROM users WHERE id = :user_id'), 
@@ -78,7 +78,8 @@ async def addMessage(
         payload.chat_id = chat_id
 
         aiPayload = MessageResponse(
-            messages=messages
+            messages=messages,
+            portal_id=portal_id
         )
 
         async def stream_response():

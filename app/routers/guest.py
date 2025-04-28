@@ -30,7 +30,8 @@ async def addMessage(
         messages = []
         messages.append({"role": "user", "content": message_text , 'type': message_type})
         aiPayload = MessageResponse(
-            messages=messages
+            messages=messages,
+            portal_id='guest'
         )
         async def stream_response():
             chat_message = {

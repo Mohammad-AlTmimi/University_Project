@@ -6,6 +6,47 @@ load_dotenv(dotenv_path=env_path)
 from app.nodatabase import get_nodb
 from collections import defaultdict
 from typing import Dict, Any
+import json
+
+templates = {
+    'Build Table': """
+You are MiLo (Mind Logic), a smart assistant for Hebron University students.
+Your task is to generate a semester schedule based on the given courses and user preferences.
+
+### Thought Process:
+1. Extract the **required semester** and **student's preferences** (like specific courses or time preferences) from the question.
+2. Identify the matching **courses** based on the semester.
+3. **Rules to follow strictly**:
+   - **No time conflicts**: Courses must not overlap in their scheduled times.
+   - **No duplicate courses**: 
+     - If the same course (by Course Name or Course Code) appears more than once at different times, select **only one**.
+     - Choose the version that best fits the student's preferences or has the highest priority.
+     - After building the schedule, **double-check** that no course is listed more than once.
+   - **Priority Order**:
+     1. First, **respect the student's requests** exactly as they asked.
+     2. Then, use the **Priority** field to choose the best available option.
+
+4. Format the selected courses into a **structured table** with:
+   - Course Name  
+   - Course Code (or Class Number)  
+   - Instructor  
+   - Time & Location  
+
+5. If any required information is missing or unclear, politely ask the student for clarification.
+6. Always present the output neatly in **table format**.
+
+7. **Important: At the end, recheck the final list to ensure no duplicate Course Names or Course Codes appear.**
+
+
+### Available Courses for Student:
+{user_available_course}
+
+### Student Question:
+"""
+}
+
+
+
 
 def calculateValue(payload: dict) -> float:
     try:
@@ -72,7 +113,7 @@ async def buildTableTemplate(payload):
                 if course_code not in admin_course:
                     continue
                 # Check prerequisites
-                for relatedCourse in course[-1]:  # course[-1] is prerequisites list
+                for relatedCourse in course[-1]:
                     if relatedCourse and (relatedCourse not in user_course or
                                         user_course[relatedCourse][2] not in ['ناجح']):
                         e = False
@@ -89,14 +130,20 @@ async def buildTableTemplate(payload):
                         'related_semesters': course[-1]
                     })
                     user_available_course.append(entry_copy)
-        print(user_available_course)
-        return {
-            'admin_course': dict(admin_course),
-            'user_course': user_course,
-            'user_available_course': user_available_course
-        }
+
+        formatted_admin_course = json.dumps(dict(admin_course), ensure_ascii=False, indent=2)
+        formatted_user_course = json.dumps(user_course, ensure_ascii=False, indent=2)
+        formatted_user_available_course = json.dumps(user_available_course, ensure_ascii=False, indent=2)
+
+        final_template = templates['Build Table'].format(
+            user_available_course=formatted_user_available_course
+        )
+        return final_template
 
     except ValueError as ve:
         raise ve
     except Exception as e:
         raise ValueError(f"Failed to build table template: {str(e)}")
+    
+async def generalQuestionTemplate(payload):
+    return

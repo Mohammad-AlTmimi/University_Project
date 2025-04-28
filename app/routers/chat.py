@@ -30,8 +30,14 @@ async def addMessage(
 ):
     try:
         user_id = user.get("user_id")
-        portal_id = user.get("portal_id")
-        # Fetch user
+        portal_id_value = user.get("portal_id")
+
+        result = await db.execute(
+            text('SELECT * FROM user_portal WHERE id = :portal_id'),
+            {"portal_id": portal_id_value}
+        )
+
+        row = result.fetchone()
         resultUser = await db.execute(
             text('SELECT * FROM users WHERE id = :user_id'), 
             {"user_id": user_id}
@@ -40,8 +46,7 @@ async def addMessage(
 
         if not user_record:
             raise HTTPException(status_code=404, detail="User not found")
-
-        # Correct payload attribute access
+        portal_id = row.portal_id
         chat_record = None
         if payload.chat_id == "newchat":
             chat_record = await creatChat(user_id , db)
@@ -55,31 +60,45 @@ async def addMessage(
         if not chat_record:
             raise HTTPException(status_code=404, detail="Chat not found")
 
-        # Correct payload attribute access
         message_text = payload.message
         message_type = await classify_question(message_text)
+        
         chat_id = chat_record.id
+        
         oneChat = GetMessages(
             user_id=user_id,
             chat_id=chat_id,
             start= max(1 , chat_record.messages_number - 6),
             end= chat_record.messages_number
         )
+        
         messages_records = await PageMessages(oneChat, nodb) if payload.chat_id != 'newchat' else []
         messages = []
-        if payload.chat_id != 'newchat':  
-            for elm in messages_records:                
-                if elm.get('type' , '') != 'question':  
-                    messages.append({'role': 'user', 'content': elm.get('message', '') , 'type': elm.get('type' , '')})
-                else:  
-                    messages.append({'role': 'system', 'content': elm.get('message', '')})
 
-        messages.append({"role": "user", "content": message_text , 'type': message_type})
+        if payload.chat_id != 'newchat':
+            for elm in messages_records:
+                msg_type = elm.get('type', '')
+                template = elm.get('template', '')
+                message = elm.get('message', '')
+
+                if msg_type != 'question': 
+                    content = template + message if template else message
+                    messages.append({'role': 'user', 'content': content})
+                else: 
+                    messages.append({'role': 'system', 'content': message})
+
+        messages.append({
+            "role": "user",
+            "content": message_text,
+        })
+
         payload.chat_id = chat_id
 
         aiPayload = MessageResponse(
             messages=messages,
-            portal_id=portal_id
+            portal_id=portal_id,
+            user_id=user_id,
+            messageType=message_type
         )
 
         async def stream_response():
@@ -97,6 +116,7 @@ async def addMessage(
                 "type": message_type, # Type of the message column(if it is from chat gpt it consider question if it from user it's (Build Chat, General Question ...))
                 "chat_id": chat_id, # Forieghn Key from Chat Table
                 "create_time": datetime.now(timezone.utc).replace(tzinfo=None), #Date Time for create the response
+                "template": ''
             }
             chat_collection = nodb["messages"]
             result = await chat_collection.insert_one(chat_message)
@@ -105,8 +125,13 @@ async def addMessage(
                 raise HTTPException(status_code=500, detail="Failed to insert chat message into MongoDB")
             
             async for ai_message_chunk in AIResponse(aiPayload):
-                response_message['message'] += ai_message_chunk
-                yield f"data: {json.dumps({'content': ai_message_chunk})}\n\n"
+                if isinstance(ai_message_chunk, dict) and ai_message_chunk.get('type') == 'template':
+                    chat_message['template'] = ai_message_chunk.get('data')
+                else:
+                    if isinstance(ai_message_chunk, dict):
+                        continue
+                    response_message['message'] += ai_message_chunk
+                    yield f"data: {json.dumps({'content': ai_message_chunk})}\n\n"
 
             yield f"data: {json.dumps({'status': '[DONE]', 'chat_id': payload.chat_id})}\n\n"
 

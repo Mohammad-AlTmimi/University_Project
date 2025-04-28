@@ -28,10 +28,12 @@ async def addMessage(
         message_type = await classify_question(message_text)
         chat_id = 'Guest'
         messages = []
-        messages.append({"role": "user", "content": message_text , 'type': message_type})
+        messages.append({"role": "user", "content": message_text})
         aiPayload = MessageResponse(
             messages=messages,
-            portal_id='guest'
+            portal_id='guest',
+            user_id= 'guest',
+            messageType= message_type,
         )
         async def stream_response():
             chat_message = {

@@ -12,6 +12,8 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 import pandas as pd
 from io import BytesIO
 from datetime import datetime, timezone
+from app.controlers.ai import extract_text_from_pdf, generate_embeddings, chunk_text
+from fastapi.responses import JSONResponse
 
 
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
@@ -77,7 +79,7 @@ async def get_services(admin: dict = Depends(authenticate)):
 @router.patch('/uploadsemestercourses')
 async def uploadxslx(
     file: UploadFile = File(...),
-    dict = Depends(authenticate),
+    admin = Depends(authenticate),
     nodb: AsyncIOMotorDatabase = Depends(get_nodb)
 ):
     try:
@@ -97,9 +99,43 @@ async def uploadxslx(
         result = await db.insert_one(semester_obj)
         if not result.inserted_id:
             raise HTTPException(status_code=500, detail="Failed to insert Course Semester inot MongoDB")
-            
+        return{
+            'message': 'File uploaded successfully',
+            'inserted_id': str(result.inserted_id)
+        }
       
     except HTTPException as httpx:
         raise httpx
     except Exception as e:
         raise HTTPException(status_code=500,detail=F"Failed to upload file: {str(e)}") 
+    
+@router.post('/upload-pdf')
+async def Upload_PDF(
+    file: UploadFile = File(...),
+    admin = Depends(authenticate),
+    nodb: AsyncIOMotorDatabase = Depends(get_nodb)
+):
+    if file.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="Invalid file type. Please upload a PDF file.")
+
+    try:
+
+
+        text = extract_text_from_pdf(file.file)
+
+        if not text.strip():
+            raise HTTPException(status_code=400, detail="No readable text found in PDF.")
+
+        chunks = chunk_text(text)
+
+        embedding_documents = generate_embeddings(chunks)
+        chunks_collection = nodb['hu_information']
+        if embedding_documents:
+            await chunks_collection.insert_many(embedding_documents)
+
+        return {
+            'message': "PDF processed and saved successfully."
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

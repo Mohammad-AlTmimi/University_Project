@@ -29,7 +29,8 @@ async def loginAdmin(
         admin = await SearchAdmin(payload, db)
         token = createToken(admin.id, admin.portal_id)
         return {
-            'Token': token
+            'Token': token,
+            'role': 'admin'
         }
     except HTTPException as httpx:
         raise httpx
@@ -52,6 +53,7 @@ async def stopservice(
         await update_env_file(env_key, env_value)
         return {
             "message": f"Service {service_id} {payload.action}ed successfully",
+            'Token': admin.get('Token')
         }
         
     except HTTPException as httpx:
@@ -93,7 +95,8 @@ async def uploadxslx(
         db = nodb['semester_courses']
         semester_obj = {
             'create_time': datetime.now(timezone.utc).replace(tzinfo=None),
-            'courses': data
+            'courses': data,
+            'Token': admin.get('Token')
         }
         print(data)
         result = await db.insert_one(semester_obj)
@@ -101,7 +104,8 @@ async def uploadxslx(
             raise HTTPException(status_code=500, detail="Failed to insert Course Semester inot MongoDB")
         return{
             'message': 'File uploaded successfully',
-            'inserted_id': str(result.inserted_id)
+            'inserted_id': str(result.inserted_id),
+            'Token': admin.get('Token')
         }
       
     except HTTPException as httpx:
@@ -134,8 +138,28 @@ async def Upload_PDF(
             await chunks_collection.insert_many(embedding_documents)
 
         return {
-            'message': "PDF processed and saved successfully."
+            'message': "PDF processed and saved successfully.",
+            'Token': admin.get('Token')
         }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+@router.get('/courses')
+async def courses(
+    admin = Depends(authenticate),
+    nodb: AsyncIOMotorDatabase = Depends(get_nodb)
+):
+    try:
+    
+        db_availabe_course = nodb['semester_courses']
+    
+        availabe_course_cursor = await db_availabe_course.find().sort('create_time', -1).limit(1).to_list(length=None)[0]
+        return {
+            'Courses': availabe_course_cursor,
+            'Token': admin.get('Token')
+        }
+    except HTTPException as httpx:
+        raise httpx
+    except Exception as e:
+        raise e

@@ -1,8 +1,10 @@
+import sys
+import asyncio
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 from fastapi import FastAPI, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy.orm import Session
-from requests import Request
 from app.database import get_db, init_db, delete_table
 from .models import User, UserPortal, Chat
 from app.routers.admin import router as admin_router
@@ -14,6 +16,7 @@ from contextlib import asynccontextmanager
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from app.nodatabase import delete_nodb
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()  # Run database initialization

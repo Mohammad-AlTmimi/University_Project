@@ -1,12 +1,17 @@
+import asyncio
+import sys
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
 import jwt
-import datetime
 from fastapi import Depends, HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from sqlalchemy.sql import text
 from passlib.context import CryptContext
 from app.schemas.user import createUser as userType
-from app.models.user import User, UserStatus, UserUpdate
+from app.models.user import User, UserStatus, UserUpdate, UserRole
 from app.database import get_db
 from app.models import User , UserPortal
 from app.schemas.user import loginUser
@@ -16,9 +21,13 @@ import aiohttp
 from dotenv import load_dotenv
 import os
 import unicodedata
-import asyncio
 from app.nodatabase import get_nodb
 import re
+from app.controlers.admin import createToken as createAdminToken
+from playwright.async_api import async_playwright
+from datetime import datetime, timedelta
+import datetime as dt
+
 env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
 load_dotenv(dotenv_path=env_path)
 
@@ -31,13 +40,13 @@ def createToken(user_id, user_key, type='Default'):
     if not SECRET_KEY:
         raise ValueError("SECRET_KEY not set in environment variables.")
     
-    expiration_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)
+    expiration_time = datetime.now(dt.timezone.utc) + timedelta(minutes=30)
     expiration_timestamp_ms = int(expiration_time.timestamp() * 1000)
 
     payload = {
         'user_id': f"{user_id} {expiration_timestamp_ms}",
         'portal_id': f"{user_key} {expiration_timestamp_ms}",
-        "exp": datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)
+        "exp": datetime.now(dt.timezone.utc) + timedelta(minutes=30)
     }
     if type != 'Default':
         SECRET_KEY = os.getenv('jwtTokenResetPassword')
@@ -92,8 +101,9 @@ async def searchUser(payload: loginUser, db: AsyncSession):
                     "user": {
                     "id": user.id,
                     "name": user.name,
+                    "role": user.role
                 },
-                "token": createToken(user.id, user.portal_id)
+                "token": createToken(user.id, user.portal_id) if user.role == UserRole.student else createAdminToken(admin_id=user.id, portal_id=payload.portal_id)
             }
         else:
             raise HTTPException(status_code=404, detail="Invalid credentials")
@@ -101,31 +111,34 @@ async def searchUser(payload: loginUser, db: AsyncSession):
         await db.rollback()
         raise HTTPException(status_code=400, detail="Failed to search for user")
 
+
 async def loginPortal(portalId: str, portalPassword: str):
     url = 'https://portal.hebron.edu/Default.aspx'
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Referer': url,
-    }
-    
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, headers=headers) as response:
-            if response.status != 200:
-                raise HTTPException(status_code=response.status, detail="Failed to load login page")
+
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            page = await browser.new_page()
+            await page.goto(url, wait_until='domcontentloaded')
             
-            page_content = await response.text()
-            soup = BeautifulSoup(page_content, 'html.parser')
+            html = await page.content()  # Get the HTML content
+            soup = BeautifulSoup(html, 'html.parser')
             
             viewstate = soup.find("input", {'name': '__VIEWSTATE'})['value'] if soup.find("input", {'name': '__VIEWSTATE'}) else ''
             viewstategenerator = soup.find("input", {'name': '__VIEWSTATEGENERATOR'})['value'] if soup.find("input", {'name': '__VIEWSTATEGENERATOR'}) else ''
             eventvalidation = soup.find("input", {'name': '__EVENTVALIDATION'})['value'] if soup.find("input", {'name': '__EVENTVALIDATION'}) else ''
-            if viewstate == None or viewstategenerator == None or eventvalidation == None:
-                raise HTTPException(status_code=403 , detail="Failed to authenticate")
-            return viewstate , viewstategenerator, eventvalidation
+            
+            await browser.close()
 
+            if not viewstate or not viewstategenerator or not eventvalidation:
+                raise HTTPException(status_code=403, detail="Failed to extract ASP.NET hidden fields")
+            
+            return viewstate, viewstategenerator, eventvalidation
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
+
+        
 async def signPortal(portalId: str, portalPassword: str):
     viewstate , viewstategenerator, eventvalidation = await loginPortal(portalId=portalId, portalPassword=portalPassword)
     async with aiohttp.ClientSession() as session:
@@ -237,13 +250,27 @@ async def scrapUserCourses(session_id, portal_id):
                 collection = db['student_data']
                 semester = os.getenv('semester')
                 print(number)
+                under_warning_text = soup.find(id="ContentPlaceHolder1_Label1422").text.strip()
+                under_warning_value = under_warning_text.split(":")[-1].strip()
+                is_under_warning = True if under_warning_value == "نعم" else False
+                
+                # Extract user level
+                user_level_text = soup.find(id="ContentPlaceHolder1_Label322").text.strip()
+                user_level_value = user_level_text.split(":")[-1].strip()
+                gpa_text = soup.find(id="ContentPlaceHolder1_avg_total").text.strip()
+                gpa_value = gpa_text.split(":")[-1].strip()
+                print(user_level_value , is_under_warning, gpa_value)
                 await collection.insert_one(
                     {
                         'semester': semester,
                         'portal_id': portal_id,
                         'courses': blocks_data,
                         'active': True,
-                        'planNumber': str(number)     
+                        'planNumber': str(number),
+                        'level': user_level_value,
+                        'under_warning': is_under_warning,
+                        'GPA': gpa_value,
+                        'create_time': datetime.now(dt.timezone.utc)
                     }
                 )
 

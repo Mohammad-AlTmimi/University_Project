@@ -25,3 +25,4 @@ python-multipart
 openpyxl
 pdfplumber 
 langchain
+playwright

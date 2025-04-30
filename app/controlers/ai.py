@@ -61,7 +61,7 @@ async def AIResponse(payload: MessageResponse):
 
 
     request_payload = {
-        "model": "gpt-4-turbo",
+        "model": "gpt-4",
         "messages": messages,
         "max_tokens": 1000,  
         "temperature": temperatures.get(payload.messages[-1].get('type'), 0.7),

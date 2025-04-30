@@ -133,7 +133,7 @@ async def addMessage(
                     response_message['message'] += ai_message_chunk
                     yield f"data: {json.dumps({'content': ai_message_chunk})}\n\n"
 
-            yield f"data: {json.dumps({'status': '[DONE]', 'chat_id': payload.chat_id})}\n\n"
+            yield f"data: {json.dumps({'status': '[DONE]', 'chat_id': payload.chat_id, 'Token': user.get('Token')})}\n\n"
 
             response_result = await chat_collection.insert_one(response_message)
             if not response_result.inserted_id:

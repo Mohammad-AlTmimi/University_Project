@@ -7,16 +7,25 @@ from app.nodatabase import get_nodb
 from collections import defaultdict
 from typing import Dict, Any
 import json
-
+from app.database import get_db
+from app.nodatabase import get_nodb
+from sqlalchemy.future import select
+from app.models.user import User, UserUpdate
 templates = {
     'Build Table': """
+    {User_Info}
 You are MiLo (Mind Logic), a smart assistant for Hebron University students.
 Your task is to generate a semester schedule based on the given courses and user preferences.
-
+Only respond to questions specifically related to Hebron University, such as departments, schedules, professors, and campus services. If the question is not related to Hebron University, politely reply with: 'I'm sorry, I can only help with questions related to Hebron University
 ### Thought Process:
-1. Extract the **required semester** and **student's preferences** (like specific courses or time preferences) from the question.
-2. Identify the matching **courses** based on the semester.
-3. **Rules to follow strictly**:
+1. Answer the user's question in the same language the question is asked, whether it's Arabic or English.
+The course content may be in Arabic or English, but your response language should always match the language of the question.
+
+2. Extract the **required semester** and **student's preferences** (like specific courses or time preferences) from the question.
+
+3. Identify the matching **courses** based on the semester.
+
+4. **Rules to follow strictly**:
    - **No time conflicts**: Courses must not overlap in their scheduled times.
    - **No duplicate courses**: 
      - If the same course (by Course Name or Course Code) appears more than once at different times, select **only one**.
@@ -26,23 +35,46 @@ Your task is to generate a semester schedule based on the given courses and user
      1. First, **respect the student's requests** exactly as they asked.
      2. Then, use the **Priority** field to choose the best available option.
 
-4. Format the selected courses into a **structured table** with:
+5. Format the selected courses into a **structured table** with:
    - Course Name  
    - Course Code (or Class Number)  
    - Instructor  
    - Time & Location  
 
-5. If any required information is missing or unclear, politely ask the student for clarification.
-6. Always present the output neatly in **table format**.
+6. If any required information is missing or unclear, politely ask the student for clarification.
 
-7. **Important: At the end, recheck the final list to ensure no duplicate Course Names or Course Codes appear.**
+7. Always present the output neatly in **table format**.
 
+8. **Important: At the end, recheck the final list to ensure no duplicate Course Names or Course Codes appear.**
+
+9. If the user's request cannot be fully satisfied (e.g., the student asks for 19 credit hours, but available courses only allow 15 due to conflicts or limited availability), do the following:
+
+Fulfill as much of the request as possible within the given constraints.
+
+Clearly and politely inform the student of the limitation, explaining why the full request couldn’t be achieved.
+
+Suggest helpful alternatives or next steps, such as:
+
+Relaxing some preferences (e.g., instructor or time).
+
+Considering additional or alternative courses.
+
+Taking remaining hours in a future semester.
 
 ### Available Courses for Student:
 {user_available_course}
 
 ### Student Question:
+""",
+'Guest User':
 """
+You are chatting with a guest user. They do not have an account and may ask general questions.
+Treat the user respectfully and assume they are unfamiliar with internal systems.
+""",
+'Student':
+    """
+You are chatting with a {student_name}. He is a {student_level} Year in University , His Cumulative GPA is {GPA} out of Hundred, and he is {Under_warning} Under Warning, User Study in College of Information Technology Computer science major.
+    """
 }
 
 
@@ -70,13 +102,12 @@ async def buildTableTemplate(payload):
         mongodb = await get_nodb()
         db_user_data = mongodb['student_data']
         db_availabe_course = mongodb['semester_courses']
-        user_data_cursor = db_user_data.find({'portal_id': payload.portal_id})
+        user_data_cursor = db_user_data.find({'portal_id': payload.portal_id}).sort('create_time', -1)
         availabe_course_cursor = db_availabe_course.find().sort('create_time', -1).limit(1)
 
         user_data = await user_data_cursor.to_list(length=None)
         availabe_course = await availabe_course_cursor.to_list(length=None)
 
-        # Check if data exists
         if not user_data:
             raise ValueError(f"No user data found for portal_id: {payload.portal_id}")
         if not availabe_course:
@@ -129,6 +160,8 @@ async def buildTableTemplate(payload):
                         'course_type': category['course_type'],
                         'related_semesters': course[-1]
                     })
+                    entry_copy['Credit Hours'] = course[2]
+                    entry_copy['Course ID'] = course_code
                     user_available_course.append(entry_copy)
 
         formatted_admin_course = json.dumps(dict(admin_course), ensure_ascii=False, indent=2)
@@ -136,14 +169,58 @@ async def buildTableTemplate(payload):
         formatted_user_available_course = json.dumps(user_available_course, ensure_ascii=False, indent=2)
 
         final_template = templates['Build Table'].format(
-            user_available_course=formatted_user_available_course
+            user_available_course=formatted_user_available_course,
+            User_Info = await userGeneralInfo(user_id = payload.user_id , portal_id = payload.portal_id)
         )
+        
         return final_template
 
     except ValueError as ve:
         raise ve
     except Exception as e:
         raise ValueError(f"Failed to build table template: {str(e)}")
+
+async def userGeneralInfo(user_id, portal_id):
+    if user_id == 'guest' or portal_id == 'guest':
+        return templates['Guest User']
     
+    mongodb = await get_nodb()
+    
+    async for db in get_db(): 
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()  # Get the user or None
+
+        db_user_data = mongodb['student_data']
+        user_data_cursor = db_user_data.find({'portal_id': portal_id}).sort('create_time', -1)
+        user_data_list = await user_data_cursor.to_list(length=1)
+        user_data = user_data_list[0] if user_data_list else None
+
+        if not user_data or not user:
+            return templates['Guest User']
+
+        # Format the response based on the retrieved data
+        print(user_data)
+        template = templates['Student'].format(
+            student_name=user.name,
+            student_level=user_data['level'],
+            GPA=user_data['GPA'],
+            Under_warning='**is**' if user_data['under_warning'] else '**is not**'
+        )
+
+        # Check for update status
+        if user.updated == UserUpdate.No:
+            template += (
+                '\n\nStudent Information May Not Be Updated. '
+                'You should warn the student that they may need to update their portal password on the MiLo website.\n\n'
+            )
+
+        return template
+
+
+            
+
+        
+    
+
 async def generalQuestionTemplate(payload):
     return

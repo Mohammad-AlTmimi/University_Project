@@ -19,7 +19,7 @@ router = APIRouter()
 async def signup(user: createUser , db: AsyncSession = Depends(get_db)): 
     try:
         name = await signPortal(user.portal_id , user.portal_password)
-        user.name = name
+        user.name = name if user.name == '' or not user.name else user.name
         newUser = await crUser(user , db)  # Ensure you await if it's an async function
         token = createToken(newUser['user_id'] , newUser['portal_id'])
         return {'User': newUser , 'Token': token, 'Name': name}
@@ -41,13 +41,11 @@ async def login(payload: loginUser, db: AsyncSession = Depends(get_db)):
             "password": <user_password>
         }
         """
-        # Call searchUser with the full payload
         user = await searchUser(payload, db)
 
-        # Return success message or additional data
         return {"message": "Login successful", "user": dict(user)}
     except HTTPException as http_exc:
-        raise http_exc  # Re-raise known HTTP exceptions to maintain status codes
+        raise http_exc 
 
     except Exception as e:
         print(f"Unexpected error: {str(e)}")  # Log for debugging (or use logging module)

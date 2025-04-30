@@ -15,6 +15,9 @@ class UserStatus(PyEnum):
     active = 'active'
     inactive = 'inactive'
     suspended = 'suspended'
+class UserRole(PyEnum):
+    student = 'student'
+    admin = 'admin'
 class UserUpdate(PyEnum):
     Yes = 'Yes'
     No = 'No'
@@ -28,9 +31,9 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     portal_id = Column(String , ForeignKey('user_portal.id'), nullable=False)
     created_at = Column(DateTime, default=datetime.now(timezone.utc).replace(tzinfo=None))
-
+    role = Column(SQLAlchemyEnum(UserRole), nullable=False, default=UserRole.student)
     name = Column(String)
-    updated = Column(SQLAlchemyEnum(UserUpdate), default=UserUpdate.No)
+    updated = Column(SQLAlchemyEnum(UserUpdate), default=UserUpdate.Yes)
 
     # One-to-one relationship with UserPortal
     portal: Mapped["UserPortal"] = relationship("UserPortal", back_populates="user", uselist=False, cascade="all, delete")

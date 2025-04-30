@@ -27,6 +27,7 @@ from app.controlers.admin import createToken as createAdminToken
 from playwright.async_api import async_playwright
 from datetime import datetime, timedelta
 import datetime as dt
+from sqlalchemy import and_
 
 env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
 load_dotenv(dotenv_path=env_path)
@@ -92,7 +93,14 @@ async def createUser(user: userType, db: AsyncSession):
 async def searchUser(payload: loginUser, db: AsyncSession):
     try:
         result = await db.execute(
-        select(User).join(UserPortal).where(UserPortal.portal_id == payload.portal_id)
+        select(User).join(UserPortal).where(
+            and_(
+                UserPortal.portal_id == payload.portal_id,
+                User.role == UserRole.student
+            )
+            
+            
+            )
         )
         user = result.scalar_one_or_none()
 

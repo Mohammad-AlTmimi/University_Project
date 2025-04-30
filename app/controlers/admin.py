@@ -2,7 +2,8 @@ from fastapi import HTTPException
 from app.schemas.admin import LogInAdmin
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from app.models.admin import Admin
+from app.models.user import User, UserRole
+
 from sqlalchemy import and_
 import jwt
 import datetime
@@ -21,8 +22,12 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 async def SearchAdmin(payload: LogInAdmin, db: AsyncSession):
     try:
         result = await db.execute(
-            select(Admin).where(
-                payload.portal_id == Admin.portal_id
+            select(User).where(
+                and_(
+                    payload.portal_id == User.portal_id,
+                    User.role == UserRole.admin
+                )
+                 
             )
         )
         admin = result.scalar_one_or_none()

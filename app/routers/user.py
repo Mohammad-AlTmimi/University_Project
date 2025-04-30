@@ -22,7 +22,7 @@ async def signup(user: createUser , db: AsyncSession = Depends(get_db)):
         user.name = name if user.name == '' or not user.name else user.name
         newUser = await crUser(user , db)  # Ensure you await if it's an async function
         token = createToken(newUser['user_id'] , newUser['portal_id'])
-        return {'User': newUser , 'Token': token, 'Name': name}
+        return {'User': newUser , 'Token': token, 'Name': user.name}
     except HTTPException as e:
         print(e)
         raise e 

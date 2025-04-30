@@ -1,14 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Header
-from app.schemas.user import createUser, loginUser, ForgetPasswordRequest, ResetPasswordRequest, ChangePasswordRequest
+from app.schemas.user import createUser, loginUser, ForgetPasswordRequest, ResetPasswordRequest, ChangePasswordRequest, LoginPortal
 from app.controlers.user import createToken
 from app.database import get_db
-from app.controlers.user import createUser as crUser , searchUser, signPortal
+from app.controlers.user import createUser as crUser , searchUser, signPortal, searchPortal
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.chat import Chat
 from app.middlewares.auth.userauth import authenticate
 from app.models import User , UserPortal
 from sqlalchemy.future import select
 from passlib.context import CryptContext
+from app.models.user import UserRole, UserUpdate
+from sqlalchemy import and_
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -128,6 +130,47 @@ async def changepassword(
         await db.commit()
         return {"password": payload.password}
     
+    except HTTPException as httpx:
+        raise httpx
+    except Exception as e:
+        raise e
+
+@router.post('/updateportalpassword')
+async def updateportal(
+    payload,
+    user: dict = Depends(authenticate), 
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        portal_ID = user.get('portal_id')
+        portal = await searchPortal(
+            LoginPortal(
+                Id = portal_ID,
+                db = db
+            )
+        )
+        val = await signPortal(portalid=portal.portal_id, portalPassword=payload.password)
+        if not val:
+            raise HTTPException(status_code=401, detail='wrong password')
+        result = await db.execute(
+        select(User).join(UserPortal).where(
+            and_(
+                UserPortal.portal_id == portal.portal_id,
+                User.role == UserRole.student
+            )
+            )
+        )
+        user = result.scalar_one_or_none()
+        user.updated = UserUpdate.Yes
+        portal.portal_password = payload.password
+        db.add(user)
+        db.add(portal)
+
+        await db.flush()   # Optional, useful if you need to use the data before commit
+        await db.commit()  # Actually commits the changes
+
+        return {"message": "Portal password updated successfully"}
+        
     except HTTPException as httpx:
         raise httpx
     except Exception as e:

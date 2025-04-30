@@ -19,4 +19,7 @@ class ResetPasswordRequest(BaseModel):
 class ChangePasswordRequest(BaseModel):
     password: str = Field(..., min_length=6, max_length=128, description="New password for the user")
     old_password: str
+
+class LoginPortal(BaseModel):
+    Id: str
     

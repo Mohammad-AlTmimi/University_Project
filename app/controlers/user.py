@@ -14,7 +14,7 @@ from app.schemas.user import createUser as userType
 from app.models.user import User, UserStatus, UserUpdate, UserRole
 from app.database import get_db
 from app.models import User , UserPortal
-from app.schemas.user import loginUser
+from app.schemas.user import loginUser, LoginPortal
 from sqlalchemy.future import select
 from bs4 import BeautifulSoup
 import aiohttp
@@ -115,6 +115,20 @@ async def searchUser(payload: loginUser, db: AsyncSession):
             }
         else:
             raise HTTPException(status_code=404, detail="Invalid credentials")
+    except SQLAlchemyError:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail="Failed to search for user")
+    
+async def searchPortal(payload: LoginPortal, db: AsyncSession):
+    try:
+        result = await db.execute(
+        select(UserPortal).where(
+            UserPortal.id == payload.id
+        )
+        )
+        portal = result.scalar_one_or_none()
+        return portal
+        
     except SQLAlchemyError:
         await db.rollback()
         raise HTTPException(status_code=400, detail="Failed to search for user")

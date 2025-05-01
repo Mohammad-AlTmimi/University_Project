@@ -11,6 +11,10 @@ from sqlalchemy.future import select
 from passlib.context import CryptContext
 from app.models.user import UserRole, UserUpdate
 from sqlalchemy import and_
+from PIL import Image
+import io
+from pathlib import Path
+from fastapi.responses import FileResponse
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -58,10 +62,47 @@ async def login(payload: loginUser, db: AsyncSession = Depends(get_db)):
 @router.post('/changephoto')
 async def changephoto(
     user: dict = Depends(authenticate), 
-    db: AsyncSession = Depends(get_db),
     file: UploadFile = File(...)
 ):
-    return 'complete when you have s3 bucket'
+    if file.content_type not in ["image/jpeg", "image/png"]:
+        raise HTTPException(status_code=400, detail="Unsupported file type")
+    try :
+        contents = await file.read()
+        user_id = user.get('user_id')
+        
+        photos_dir = Path(__file__).resolve().parent.parent / "photos"
+        photos_dir.mkdir(parents=True, exist_ok=True)
+        
+        filename = f"{user_id}.jpg"
+        save_path = photos_dir / filename
+        
+        image = Image.open(io.BytesIO(contents))
+        image = image.convert("RGB")
+        image.save(save_path, format="JPEG", optimize=True, quality=70)
+        
+        return {
+            'message': 'Photo Update Complete',
+            'Token': user.get('Token')
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to save image: {type(e).__name__}: {str(e)}"
+        )
+
+@router.get("/photo")
+async def get_user_photo(user: dict = Depends(authenticate)):
+    user_id = user.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    photos_dir = Path(__file__).resolve().parent.parent / "photos"
+    photo_path = photos_dir / f"{user_id}.jpg"
+
+    if not photo_path.exists():
+        raise HTTPException(status_code=404, detail="Photo not found")
+
+    return FileResponse(photo_path, media_type="image/jpeg")
 
 @router.post('/forgetpassword')
 async def forgetPassword(

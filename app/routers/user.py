@@ -50,7 +50,6 @@ async def login(payload: loginUser, db: AsyncSession = Depends(get_db)):
         raise http_exc 
 
     except Exception as e:
-        print(f"Unexpected error: {str(e)}")  # Log for debugging (or use logging module)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",

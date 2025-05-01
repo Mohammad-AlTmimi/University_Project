@@ -1,8 +1,9 @@
 from fastapi import HTTPException
 from app.schemas.admin import LogInAdmin
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
+from sqlalchemy.future import select, func
 from app.models.user import User, UserRole
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
 from sqlalchemy import and_
 import jwt
@@ -19,26 +20,7 @@ load_dotenv(dotenv_path=env_path)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-async def SearchAdmin(payload: LogInAdmin, db: AsyncSession):
-    try:
-        result = await db.execute(
-            select(User).where(
-                and_(
-                    payload.portal_id == User.portal_id,
-                    User.role == UserRole.admin
-                )
-                 
-            )
-        )
-        admin = result.scalar_one_or_none()
-        
-        if not admin:
-            raise HTTPException(status_code=404, detail='No User Found')
-        if not admin.verify_password(payload.password):
-            raise HTTPException(status_code=404, detail='Wrong Password')
-        return admin
-    except Exception as e:
-        raise e
+
     
 def createToken(admin_id, portal_id):
     SECRET_KEY = os.getenv('jwtTokenAdmin')
@@ -70,3 +52,35 @@ async def update_env_file(key: str, value: str):
 
     except Exception as e:
         raise Exception(f"Failed to update .env file: {str(e)}")
+    
+async def getusers(
+    db: AsyncSession,
+    start: int,
+    end: int
+):
+    try:
+        result = await db.execute(
+            select(User).where(
+                User.role == UserRole.student
+            ).limit(end - start + 1).offset(start - 1)
+        )
+
+        users = result.scalars().all()
+
+        count_result = await db.execute(
+            select(func.count()).select_from(User).where(User.role == UserRole.student)
+        )
+        count = count_result.scalar()
+
+        return {
+            'count': count,
+            'users': users
+        }
+    except SQLAlchemyError:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail="Failed to search for user")
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=e)
+    
+        

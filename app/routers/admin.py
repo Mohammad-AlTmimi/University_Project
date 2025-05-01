@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Header
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Header,  Query
 from app.schemas.admin import LogInAdmin, ToggleRequest
 from app.models.admin import Admin
-from app.controlers.admin import SearchAdmin, createToken, update_env_file
+from app.controlers.admin import createToken, update_env_file, getusers
 from app.database import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.middlewares.auth.adminauth import authenticate
@@ -20,22 +20,7 @@ env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
 load_dotenv(dotenv_path=env_path)
 router = APIRouter()
 
-@router.post('/login')
-async def loginAdmin(
-    payload: LogInAdmin,
-    db: AsyncSession = Depends(get_db)
-):
-    try:
-        admin = await SearchAdmin(payload, db)
-        token = createToken(admin.id, admin.portal_id)
-        return {
-            'Token': token,
-            'role': 'admin'
-        }
-    except HTTPException as httpx:
-        raise httpx
-    except Exception as e:
-        raise e
+
 
 @router.post('/services/{service_id}/toggle')
 async def stopservice(
@@ -89,7 +74,9 @@ async def uploadxslx(
             raise HTTPException(status_code=400, detail="Only .xlsx files are allowed")
         content = await file.read()
         excel_data = BytesIO(content)
+        expected_column_names = []
         df = pd.read_excel(excel_data, engine="openpyxl")
+        
         data = df.to_dict(orient='records')
         
         db = nodb['semester_courses']
@@ -157,6 +144,24 @@ async def courses(
         availabe_course_cursor = await db_availabe_course.find().sort('create_time', -1).limit(1).to_list(length=None)[0]
         return {
             'Courses': availabe_course_cursor,
+            'Token': admin.get('Token')
+        }
+    except HTTPException as httpx:
+        raise httpx
+    except Exception as e:
+        raise e
+
+@router.get('/students')
+async def getStudents(
+    admin = Depends(authenticate),
+    db : AsyncSession = Depends(get_db),
+    start: int = Query(1, alias="start"), 
+    end: int = Query(10, alias="end"), 
+):
+    try:
+        value = await getusers(db , start=start, end=end)
+        return {
+            'Studetns': value,
             'Token': admin.get('Token')
         }
     except HTTPException as httpx:

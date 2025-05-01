@@ -95,8 +95,7 @@ async def searchUser(payload: loginUser, db: AsyncSession):
         result = await db.execute(
         select(User).join(UserPortal).where(
             and_(
-                UserPortal.portal_id == payload.portal_id,
-                User.role == UserRole.student
+                UserPortal.portal_id == payload.portal_id
             )
             
             

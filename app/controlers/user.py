@@ -72,7 +72,8 @@ async def createUser(user: userType, db: AsyncSession):
                 password_hash=user.password,
                 portal_id=portal.id,
                 name=user.name,
-                updated = UserUpdate.Yes
+                updated = UserUpdate.Yes,
+                role= UserRole.student
             )
             newUser.set_password(user.password)
 

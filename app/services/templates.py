@@ -8,7 +8,7 @@ from collections import defaultdict
 from typing import Dict, Any
 import json
 from app.database import get_db
-from app.nodatabase import get_nodb
+from app.mongodbatlas import get_atlas_db
 from sqlalchemy.future import select
 from app.models.user import User, UserUpdate
 import numpy as np
@@ -263,34 +263,42 @@ async def generalQuestionTemplate(payload):
     )
     return template
 
-async def getContext(user_question: str, context_number):
-    question_embedding = generate_embeddings(user_question)[0]['embedding_table']
+async def getContext(user_question: str, context_number: int):
+    from motor.motor_asyncio import AsyncIOMotorDatabase
 
-    db = await get_nodb()
+    # Step 1: Generate the question embedding
+    print('HEHEHEH')
+    question_embedding = generate_embeddings(user_question)[0]['embedding_table']
+    print('hihihi')
+    # Step 2: Get DB and collection
+    db: AsyncIOMotorDatabase =  await get_atlas_db()
     collection = db["hu_information"]
 
-    documents = await collection.find({}).to_list(length=None)
-    similarities = []
-    for doc in documents:
-        chunk_text = doc.get("text")
-        chunk_embedding = doc.get("embedding_table")
-        if chunk_text is None or chunk_embedding is None:
-            continue
+    # Step 3: Perform vector search using MongoDB Atlas Search
+    pipeline = [
+        {
+            "$vectorSearch": {
+                "index": "vector_search",  # Your vector index name
+                "path": "embedding_table",
+                "queryVector": question_embedding,
+                "numCandidates": 100,
+                "limit": context_number
+            }
+        },
+        {
+            "$project": {
+                "text": 1,
+                "_id": 0,
+                "score": {"$meta": "vectorSearchScore"}
+            }
+        }
+    ]
 
-        try:
-            chunk_embedding = np.array(chunk_embedding, dtype=np.float32)
-        except Exception as e:
-            continue  # Skip malformed embeddings
+    results = await collection.aggregate(pipeline).to_list(length=context_number)
 
-        similarity = np.dot(question_embedding, chunk_embedding) / (
-            np.linalg.norm(question_embedding) * np.linalg.norm(chunk_embedding)
-        )
-        similarities.append((chunk_text, similarity))
+    if not results:
+        raise HTTPException(status_code=404, detail="No similar documents found.")
 
-    if not similarities:
-        raise HTTPException(status_code=404, detail="No valid documents with embeddings found.")
-
-    similarities.sort(key=lambda x: x[1], reverse=True)
-    top_contexts = [text for text, _ in similarities[:context_number]]
-
+    top_contexts = [doc["text"] for doc in results if "text" in doc]
+    print('hi')
     return top_contexts

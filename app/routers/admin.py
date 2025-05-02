@@ -15,8 +15,8 @@ from datetime import datetime, timezone
 from app.controlers.ai import extract_text_from_pdf, chunk_text
 from app.controlers.embedings import generate_embeddings
 from fastapi.responses import JSONResponse
-
-
+from app.mongodbatlas import get_atlas_db , create_text_search_index, create_vector_search_index, is_index_active
+from app.schemas.ai import SearchQuery
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
 load_dotenv(dotenv_path=env_path)
 router = APIRouter()
@@ -100,31 +100,54 @@ async def uploadxslx(
         raise httpx
     except Exception as e:
         raise HTTPException(status_code=500,detail=F"Failed to upload file: {str(e)}") 
-    
-@router.post('/upload-pdf')
+@router.post('/upload-pdf')      
 async def Upload_PDF(
     file: UploadFile = File(...),
     admin = Depends(authenticate),
-    nodb: AsyncIOMotorDatabase = Depends(get_nodb)
+    db: AsyncIOMotorDatabase = Depends(get_atlas_db)
 ):
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Invalid file type. Please upload a PDF file.")
 
     try:
-
-
+        # Extract text from PDF
         text = extract_text_from_pdf(file.file)
 
         if not text.strip():
             raise HTTPException(status_code=400, detail="No readable text found in PDF.")
 
+        # Chunk the text
         chunks = chunk_text(text)
 
+        # Generate embeddings
         embedding_documents = generate_embeddings(chunks)
-        chunks_collection = nodb['hu_information']
+
+        # Access the hu_information collection
+        chunks_collection = db['hu_information']
+
+        # Create search indexes if they don't exist
+        existing_indexes = await chunks_collection.list_search_indexes().to_list()
+        index_names = [index['name'] for index in existing_indexes]
+        print('ho')
+        # ✅ First insert the documents
         if embedding_documents:
             await chunks_collection.insert_many(embedding_documents)
-
+        
+        # ✅ Then check and create indexes (after collection is created)
+        existing_indexes = await chunks_collection.list_search_indexes().to_list()
+        index_names = [index['name'] for index in existing_indexes]
+        
+        if "text_search" not in index_names:
+            await create_text_search_index(chunks_collection)
+            if not await is_index_active(chunks_collection, "text_search"):
+                print("Warning: text_search index is still building.")
+        
+        if "vector_search" not in index_names:
+            await create_vector_search_index(chunks_collection)
+            if not await is_index_active(chunks_collection, "vector_search"):
+                print("Warning: vector_search index is still building.")
+        
+        
         return {
             'message': "PDF processed and saved successfully.",
             'Token': admin.get('Token')
@@ -132,6 +155,7 @@ async def Upload_PDF(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
     
 @router.get('/courses')
 async def courses(

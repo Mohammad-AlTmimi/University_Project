@@ -16,3 +16,7 @@ class GeneralQuestionTemplate(BaseModel):
     portal_id: str
     user_id: str
     question: str
+    
+class SearchQuery(BaseModel):
+    query: str
+    search_type: str = "text" 

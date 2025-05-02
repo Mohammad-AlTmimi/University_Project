@@ -13,15 +13,16 @@ API_VERSION = os.getenv("API_VERSION")
 openai.api_key = os.getenv("API_KEY")
 
 def generate_embeddings(chunks):
-    embedding_documents = []
-    for chunk in chunks:
-        response =  openai.embeddings.create(
-            model="text-embedding-ada-002",
-            input=chunk
-        )
-        embedding = response.data[0].embedding
-        embedding_documents.append({
-            "text": chunk,
-            "embedding_table": embedding
-        })
-    return embedding_documents
+    # chunks should be a list of strings (questions)
+    response = openai.embeddings.create(
+        model="text-embedding-ada-002",
+        input=chunks
+    )
+    
+    return [
+        {
+            "text": chunks[i],
+            "embedding_table": embedding.embedding
+        }
+        for i, embedding in enumerate(response.data)
+    ]

@@ -52,19 +52,23 @@ async def addMessage(
                 'create_time': datetime.now(timezone.utc).replace(tzinfo=None),
             }
             chat_collection = nodb["messages"]
-            result = await chat_collection.insert_one(chat_message)
-            
-            if not result.inserted_id:
-                raise HTTPException(status_code=500, detail="Failed to insert chat message into MongoDB")
-            
+                        
             async for ai_message_chunk in AIResponse(aiPayload):
-                response_message['message'] += ai_message_chunk
-                yield f"data: {json.dumps({'content': ai_message_chunk})}\n\n"
-
+                if isinstance(ai_message_chunk, dict) and ai_message_chunk.get('type') == 'template':
+                    chat_message['template'] = ai_message_chunk.get('data')
+                else:
+                    if isinstance(ai_message_chunk, dict):
+                        continue
+                    response_message['message'] += ai_message_chunk
+                    yield f"data: {json.dumps({'content': ai_message_chunk})}\n\n"
+                    
             yield f"data: {json.dumps({'status': '[DONE]', 'chat_id': payload.chat_id})}\n\n"
             print('hi')
             response_result = await chat_collection.insert_one(response_message)
-            if not response_result.inserted_id:
+            result = await chat_collection.insert_one(chat_message)
+            
+            
+            if not response_result.inserted_id or not result.inserted_id:
                 raise HTTPException(status_code=500, detail="Failed to insert AI response into MongoDB")
 
             await updateLastInteractoin(chat_id=chat_id, db=db)

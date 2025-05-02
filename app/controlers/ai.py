@@ -56,7 +56,7 @@ async def AIResponse(payload: MessageResponse):
         ))
         
     else :
-        template = await templateFunction(GeneralQuestionTemplate(
+        template = await generalQuestionTemplate(GeneralQuestionTemplate(
             portal_id=payload.portal_id,
             user_id= payload.user_id,
             question= payload.messages[-1]['content']
@@ -68,7 +68,7 @@ async def AIResponse(payload: MessageResponse):
     request_payload = {
         "model": "gpt-4",
         "messages": messages,
-        "max_tokens": 500 if payload.messageType == 'Build Table' else 300,  
+        "max_tokens": 300 if payload.messageType == 'Build Table' else 150,  
         "temperature": temperatures.get(payload.messages[-1].get('type'), 0.7),
         "stream": True  
     }

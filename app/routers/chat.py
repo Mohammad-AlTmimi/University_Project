@@ -68,7 +68,7 @@ async def addMessage(
         oneChat = GetMessages(
             user_id=user_id,
             chat_id=chat_id,
-            start= max(1 , chat_record.messages_number - 6),
+            start= max(1 , chat_record.messages_number - 2),
             end= chat_record.messages_number
         )
         
@@ -134,7 +134,7 @@ async def addMessage(
             result = await chat_collection.insert_one(chat_message)
             response_result = await chat_collection.insert_one(response_message)
             
-            if not response_result.inserted_id and not result.inserted_id:
+            if not response_result.inserted_id or not result.inserted_id:
                 raise HTTPException(status_code=500, detail="Failed to insert AI response into MongoDB")
             
 

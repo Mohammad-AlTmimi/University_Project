@@ -3,9 +3,11 @@ import datetime
 from fastapi import HTTPException, status, Header
 from typing import Dict, Any
 from app.controlers import createToken
-
+from app.models.user import User , UserStatus
 from dotenv import load_dotenv
+from app.database import get_db
 import os
+from sqlalchemy import select , and_
 
 env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
 load_dotenv(dotenv_path=env_path)
@@ -38,7 +40,18 @@ async def authenticate(
             
         if 'portal_id' in payload:
             payload['portal_id'] = payload['portal_id'].split(' ')[0]
-            
+        async for db in get_db(): 
+            user_id = payload['user_id']
+            result = await db.execute(select(User).where(
+                and_(
+                    User.id == user_id,
+                    User.status == UserStatus.active
+                )
+                
+            ))
+            user = result.scalar_one_or_none()
+            if not user:
+                raise HTTPException(status_code=401, detail='not authorized')
         payload['Token'] = createToken(payload.get('user_id'), payload.get('portal_id'))
         return payload  # Return the decoded JWT payload
 

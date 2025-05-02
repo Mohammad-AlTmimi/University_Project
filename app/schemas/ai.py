@@ -11,3 +11,8 @@ class MessageResponse(BaseModel):
 class PortalPayload(BaseModel):
     portal_id: str 
     user_id: str
+    
+class GeneralQuestionTemplate(BaseModel):
+    portal_id: str
+    user_id: str
+    question: str

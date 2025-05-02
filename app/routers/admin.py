@@ -12,7 +12,8 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 import pandas as pd
 from io import BytesIO
 from datetime import datetime, timezone
-from app.controlers.ai import extract_text_from_pdf, generate_embeddings, chunk_text
+from app.controlers.ai import extract_text_from_pdf, chunk_text
+from app.controlers.embedings import generate_embeddings
 from fastapi.responses import JSONResponse
 
 

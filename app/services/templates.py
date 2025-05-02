@@ -11,6 +11,14 @@ from app.database import get_db
 from app.nodatabase import get_nodb
 from sqlalchemy.future import select
 from app.models.user import User, UserUpdate
+import numpy as np
+from app.controlers.embedings import generate_embeddings
+env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
+load_dotenv(dotenv_path=env_path)
+
+
+TABLE_SERVICE = os.getenv("SERVICE_BUILD_TABLE_QUESTION_ENABLED")
+
 templates = {
     'Build Table': """
     {User_Info}
@@ -74,6 +82,28 @@ Treat the user respectfully and assume they are unfamiliar with internal systems
 'Student':
     """
 You are chatting with a {student_name}. He is a {student_level} Year in University , His Cumulative GPA is {GPA} out of Hundred, and he is {Under_warning} Under Warning, User Study in College of Information Technology Computer science major.
+    """,
+'General University Question':
+    """
+    {User_Info}
+You are MiLo (Mind Logic), a smart assistant for Hebron University students.
+ designed to answer questions about university-related topics, such as academics, admissions, campus services, schedules, policies, and student life. Your responses should be professional, friendly, and concise, tailored to a university audience.
+
+**Instructions**:
+1. **Use Provided Context**: You will receive context from university documents . This is your primary source for university-specific information. If the context contains relevant information, use it to answer the question accurately. Cite the source (e.g., document name or section) if applicable.
+2. **Supplement with General Knowledge**: If the context is insufficient or the question is general (e.g., about university concepts or practices), use your general knowledge to provide a complete answer. Ensure the response aligns with common university standards.
+3. **Handle Unclear Questions**: If the question is vague, ambiguous, or lacks details, respond politely, explain why you need clarification, and ask for more information. Provide examples to guide the user.
+4. **Tone and Style**: Be professional yet approachable. Avoid overly technical language unless necessary, and explain terms if used. Keep answers concise but comprehensive.
+5. **Structure Responses**:
+   - Start with a direct answer or acknowledgment of the question.
+   - Provide details, examples, or explanations as needed.
+   - End with an offer to assist further or clarify if needed.
+
+**Context**:
+{context}
+
+**User Question**:
+
     """
 }
 
@@ -99,6 +129,11 @@ def calculateValue(payload: dict) -> float:
 
 async def buildTableTemplate(payload):
     try:
+        if TABLE_SERVICE != 'start':
+            final_template = templates['Build Table'].format(
+            user_available_course='No offer courses , ',
+            User_Info = await userGeneralInfo(user_id = payload.user_id , portal_id = payload.portal_id)
+        )
         mongodb = await get_nodb()
         db_user_data = mongodb['student_data']
         db_availabe_course = mongodb['semester_courses']
@@ -199,7 +234,6 @@ async def userGeneralInfo(user_id, portal_id):
             return templates['Guest User']
 
         # Format the response based on the retrieved data
-        print(user_data)
         template = templates['Student'].format(
             student_name=user.name,
             student_level=user_data['level'],
@@ -223,4 +257,40 @@ async def userGeneralInfo(user_id, portal_id):
     
 
 async def generalQuestionTemplate(payload):
-    return
+    template = templates['General University Question'].format(
+        context = await getContext(payload.question, 3),
+        User_Info = await userGeneralInfo(user_id = payload.user_id , portal_id = payload.portal_id)
+    )
+    return template
+
+async def getContext(user_question: str, context_number):
+    question_embedding = generate_embeddings(user_question)[0]['embedding_table']
+
+    db = await get_nodb()
+    collection = db["hu_information"]
+
+    documents = await collection.find({}).to_list(length=None)
+    similarities = []
+    for doc in documents:
+        chunk_text = doc.get("text")
+        chunk_embedding = doc.get("embedding_table")
+        if chunk_text is None or chunk_embedding is None:
+            continue
+
+        try:
+            chunk_embedding = np.array(chunk_embedding, dtype=np.float32)
+        except Exception as e:
+            continue  # Skip malformed embeddings
+
+        similarity = np.dot(question_embedding, chunk_embedding) / (
+            np.linalg.norm(question_embedding) * np.linalg.norm(chunk_embedding)
+        )
+        similarities.append((chunk_text, similarity))
+
+    if not similarities:
+        raise HTTPException(status_code=404, detail="No valid documents with embeddings found.")
+
+    similarities.sort(key=lambda x: x[1], reverse=True)
+    top_contexts = [text for text, _ in similarities[:context_number]]
+
+    return top_contexts

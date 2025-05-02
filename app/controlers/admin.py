@@ -1,7 +1,8 @@
 from fastapi import HTTPException
 from app.schemas.admin import LogInAdmin
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select, func
+from sqlalchemy import select, func
+
 from app.models.user import User, UserRole
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 

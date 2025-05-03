@@ -42,19 +42,24 @@ async def get_db():
         finally:
             await session.close()
 
-#delete me in deployment plesase :)
 async def delete_table():
     async with engine.begin() as conn: 
         await conn.run_sync(lambda sync_conn: sync_conn.execute(text("DROP TABLE user_portal CASCADE")))
         await conn.run_sync(lambda sync_conn: sync_conn.execute(text("DROP TABLE users CASCADE")))
         await conn.run_sync(lambda sync_conn: sync_conn.execute(text("DROP TABLE chats CASCADE")))
 
+
+
+def create_database_if_not_exists():
+    sync_engine = create_engine(SYNC_DATABASE_URL)
+    if not database_exists(sync_engine.url):
+        create_database(sync_engine.url)
+        print("Database created")
+
 async def create_async_database():
-    if not await database_exists(engine.url):
-        await create_database(engine.url)
-        print("Async Database created!")
-    else:
-        print("Async Database already exists!")
+    create_database_if_not_exists()
+    async_engine = create_async_engine(SYNC_DATABASE_URL)
+    return async_engine
 
 async def lifespan(app):
     await create_async_database()  

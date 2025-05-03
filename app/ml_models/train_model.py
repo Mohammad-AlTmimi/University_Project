@@ -33,7 +33,6 @@ classifier.fit(X_train, y_train)
 y_pred = classifier.predict(X_test)
 print(classification_report(y_test, y_pred))
 
-# ✅ Save the trained classifier and label mapping
-os.makedirs("app/ml_models", exist_ok=True)
+
 joblib.dump(classifier, "app/ml_models/classifier.pkl")
 joblib.dump(label_mapping, "app/ml_models/label_mapping.pkl")

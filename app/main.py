@@ -5,7 +5,7 @@ if sys.platform == "win32":
 from fastapi import FastAPI, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from app.database import get_db, init_db, delete_table
+from app.database import get_db, init_db, delete_table, create_async_database
 from .models import User, UserPortal, Chat
 from app.routers.admin import router as admin_router
 from app.routers.chat import router as chat_router
@@ -19,8 +19,9 @@ from app.nodatabase import delete_nodb
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await init_db()  # Run database initialization
-    yield  # The app will run here
+    await create_async_database()
+    await init_db()
+    yield
     
 app = FastAPI(lifespan=lifespan)
 
@@ -31,16 +32,15 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,  # Allow only frontend origin
+    allow_origins=origins, 
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all HTTP methods
-    allow_headers=["*"],  # Allow all headers
+    allow_methods=["*"], 
+    allow_headers=["*"],  
 )
 
 
 
 
-# Initialize the FastAPI app with the lifespan context manager
 
 app.include_router(chat_router, prefix='/chat')
 app.include_router(user_router, prefix='/user')

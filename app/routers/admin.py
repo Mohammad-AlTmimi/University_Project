@@ -17,6 +17,8 @@ from app.controlers.embedings import generate_embeddings
 from fastapi.responses import JSONResponse
 from app.mongodbatlas import get_atlas_db , create_text_search_index, create_vector_search_index, is_index_active
 from app.schemas.ai import SearchQuery
+from sqlalchemy import select, func
+from app.models.user import User
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
 load_dotenv(dotenv_path=env_path)
 router = APIRouter()
@@ -48,7 +50,33 @@ async def stopservice(
         raise HTTPException(
             status_code=500, detail=f"Failed to {payload.action} service: {str(e)}"
         )
+@router.get('/charts')
+async def get_charts(
+    admin: dict = Depends(authenticate),
+    db: AsyncSession = Depends(get_db),
+    nodb: AsyncIOMotorDatabase = Depends(get_nodb)
+):
+    try:
+        result = await db.execute(select(func.count()).select_from(User))
+        total_users = result.scalar()
 
+        chat_messages_collection = nodb['messages']
+        pipeline = [
+            {"$match": {"type": {"$ne": "question"}}},
+            {"$group": {"_id": "$type", "count": {"$sum": 1}}}
+        ]
+        aggregation_result = await chat_messages_collection.aggregate(pipeline).to_list(length=None)
+
+        message_type_counts = {entry["_id"]: entry["count"] for entry in aggregation_result}
+
+        return {
+            "total_users": total_users,
+            "message_type_counts": message_type_counts
+        }
+    except Exception as e:
+        raise e
+    
+    
 @router.get("/services")
 async def get_services(admin: dict = Depends(authenticate)):
     try:

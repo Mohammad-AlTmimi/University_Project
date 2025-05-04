@@ -1,4 +1,3 @@
-labeled_questions.csv
 .env
 venv/
 *__pycache__/

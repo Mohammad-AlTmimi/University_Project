@@ -26,3 +26,4 @@ openpyxl
 pdfplumber 
 langchain
 playwright
+greenlet

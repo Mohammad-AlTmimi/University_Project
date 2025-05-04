@@ -4,34 +4,23 @@ from sqlalchemy.sql import text
 from sqlalchemy import create_engine
 from sqlalchemy_utils import database_exists, create_database
 from contextlib import asynccontextmanager
-
 from dotenv import load_dotenv
 import os
 
 env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
 load_dotenv(dotenv_path=env_path)
 
-
 Base = declarative_base()
 
-
-DATABASE_URL = ''
-sync_engine = ''
-
 SYNC_DATABASE_URL = os.getenv('SYNC_URL_DATABASE')
-if os.environ.get('RELOAD_MODE') == 'true':
-    DATABASE_URL = "postgresql+asyncpg://admin:admin123@localhost:5432/testproject"
-else :
-    DATABASE_URL = os.getenv('ASYNC_URL_INSTANCE')
-    sync_engine = create_engine(SYNC_DATABASE_URL)
+ASYNC_DATABASE_URL = os.getenv('ASYNC_URL_INSTANCE')
 
-# Async Engine
-engine = create_async_engine(DATABASE_URL, echo=False)
+
+sync_engine = create_engine(SYNC_DATABASE_URL)
+engine = create_async_engine(ASYNC_DATABASE_URL, echo=False)
 SessionLocal = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 
-
 async def init_db():
-    """Create tables asynchronously."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
@@ -43,25 +32,20 @@ async def get_db():
             await session.close()
 
 async def delete_table():
-    async with engine.begin() as conn: 
+    async with engine.begin() as conn:
         await conn.run_sync(lambda sync_conn: sync_conn.execute(text("DROP TABLE user_portal CASCADE")))
         await conn.run_sync(lambda sync_conn: sync_conn.execute(text("DROP TABLE users CASCADE")))
         await conn.run_sync(lambda sync_conn: sync_conn.execute(text("DROP TABLE chats CASCADE")))
 
-
-
 def create_database_if_not_exists():
-    sync_engine = create_engine(SYNC_DATABASE_URL)
     if not database_exists(sync_engine.url):
         create_database(sync_engine.url)
-        print("Database created")
 
 async def create_async_database():
     create_database_if_not_exists()
-    async_engine = create_async_engine(SYNC_DATABASE_URL)
-    return async_engine
+    return engine
 
 async def lifespan(app):
-    await create_async_database()  
-    await init_db()  
+    await create_async_database()
+    await init_db()
     yield

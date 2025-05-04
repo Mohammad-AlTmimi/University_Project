@@ -59,18 +59,17 @@ async def delet():
 @app.get("/db-status")
 async def db_status(db: AsyncSession = Depends(get_db)):
     try:
-        # Try a simple query to check the connection
         resultUser = await db.execute(select(User))
         users = resultUser.scalars().all()
         resultPortal = await db.execute(select(UserPortal))
         portals = resultPortal.scalars().all()
         resultChat = await db.execute(select(Chat))
         chat = resultChat.scalars().all()
-        return {"status": "connected", "users": users[:5], "portal": portals[:5], "Chats": chat[:5]}  # Return a sample of data
+        
+        return {"status": "connected", "users": users[:5], "portal": portals[:5], "Chats": chat[:5]}
     except Exception as e:
-        # In case of any error with the DB connection
-        raise HTTPException(status_code=500, detail=f"Database connection failed: {e}")
 
+        raise HTTPException(status_code=500, detail=f"Database connection failed: {e}")
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc):

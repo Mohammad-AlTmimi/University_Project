@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse
 from app.mongodbatlas import get_atlas_db , create_text_search_index, create_vector_search_index, is_index_active
 from app.schemas.ai import SearchQuery
 from sqlalchemy import select, func
-from app.models.user import User
+from app.models.user import User, UserRole
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
 load_dotenv(dotenv_path=env_path)
 router = APIRouter()
@@ -57,7 +57,7 @@ async def get_charts(
     nodb: AsyncIOMotorDatabase = Depends(get_nodb)
 ):
     try:
-        result = await db.execute(select(func.count()).select_from(User))
+        result = await db.execute(select(func.count()).select_from(User).where(User.role == UserRole.student))
         total_users = result.scalar()
 
         chat_messages_collection = nodb['messages']
@@ -138,30 +138,23 @@ async def Upload_PDF(
         raise HTTPException(status_code=400, detail="Invalid file type. Please upload a PDF file.")
 
     try:
-        # Extract text from PDF
         text = extract_text_from_pdf(file.file)
 
         if not text.strip():
             raise HTTPException(status_code=400, detail="No readable text found in PDF.")
 
-        # Chunk the text
         chunks = chunk_text(text)
 
-        # Generate embeddings
         embedding_documents = generate_embeddings(chunks)
 
-        # Access the hu_information collection
         chunks_collection = db['hu_information']
 
-        # Create search indexes if they don't exist
         existing_indexes = await chunks_collection.list_search_indexes().to_list()
         index_names = [index['name'] for index in existing_indexes]
-        print('ho')
-        # ✅ First insert the documents
+
         if embedding_documents:
             await chunks_collection.insert_many(embedding_documents)
         
-        # ✅ Then check and create indexes (after collection is created)
         existing_indexes = await chunks_collection.list_search_indexes().to_list()
         index_names = [index['name'] for index in existing_indexes]
         
@@ -194,7 +187,10 @@ async def courses(
     
         db_availabe_course = nodb['semester_courses']
     
-        availabe_course_cursor = await db_availabe_course.find().sort('create_time', -1).limit(1).to_list(length=None)[0]
+        availabe_course_cursor = await db_availabe_course.find().sort('create_time', -1).limit(1).to_list(length=None)
+        availabe_course_cursor = availabe_course_cursor[0] if availabe_course_cursor else None
+        if availabe_course_cursor :
+            availabe_course_cursor['_id'] = str(availabe_course_cursor['_id'])
         return {
             'Courses': availabe_course_cursor,
             'Token': admin.get('Token')

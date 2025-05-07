@@ -5,7 +5,7 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - app/.env  # Point to .env inside the app directory
+      - app/.env
     depends_on:
       - mongo-local
       - mongo-atlas
@@ -20,17 +20,16 @@ services:
       - mongo-local-data:/data/db
     networks:
       - app-network
-
   mongo-atlas:
-    image: mongo:6.0
-    ports:
-      - "27018:27018"
+    image: mongodb/mongodb-atlas-local
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=admin
-      - MONGO_INITDB_ROOT_PASSWORD=mysecurepassword
+      - MONGODB_INITDB_ROOT_USERNAME=user
+      - MONGODB_INITDB_ROOT_PASSWORD=pass
+    ports:
+      - 27018:27017
     volumes:
-      - mongo-atlas-data:/data/db
-    command: mongod --port 27018
+      - data:/data/db
+      - config:/data/configdb
     networks:
       - app-network
 
@@ -40,4 +39,5 @@ networks:
 
 volumes:
   mongo-local-data:
-  mongo-atlas-data:
+  data:
+  config:

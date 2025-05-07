@@ -8,7 +8,6 @@ load_dotenv()
 MONGODB_URI = os.getenv("MONGODB_ATLAS_URI")
 DATABASE_NAME = os.getenv("DATABASE_NAME")
 
-# Index creation functions
 async def create_text_search_index(collection):
     try:
         await collection.create_search_index({
@@ -52,7 +51,7 @@ async def create_vector_search_index(collection):
 
 async def get_atlas_db():
     client = AsyncIOMotorClient(MONGODB_URI)
-    db = client[DATABASE_NAME]  # Return the database directly
+    db = client[DATABASE_NAME]
     return db
         
 async def is_index_active(collection, index_name):
@@ -63,7 +62,7 @@ async def is_index_active(collection, index_name):
     return False
 
 async def test_connection():
-    uri = "mongodb://admin:mysecurepassword@localhost:27018/?authSource=admin"
+    uri = "mongodb://admin:mysecurepassword@mongo-atlas:27018/?directConnection=true&authSource=admin"
     client = AsyncIOMotorClient(uri, serverSelectionTimeoutMS=5000)
     try:
         await client.server_info()  # Forces a connection

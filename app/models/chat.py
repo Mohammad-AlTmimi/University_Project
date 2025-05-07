@@ -11,13 +11,10 @@ class Chat(Base):
     chat_number = Column(Integer, nullable = False)
     user_id = Column(String, ForeignKey('users.id'), nullable=False)
     messages_number = Column(Integer, nullable = False, default=0)
-    # Store timestamp as timezone-aware datetime (TIMESTAMP WITH TIME ZONE)
     timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
-    
-    # Make sure `last_interaction` is naive (without timezone)
+    title = Column(String)
     last_interaction = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
-    # Relationship to User
     user = relationship('User', back_populates='chats')
 
     def update_last_interaction(self):

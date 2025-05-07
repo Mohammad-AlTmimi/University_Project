@@ -5,6 +5,7 @@ from fastapi import HTTPException
 from sqlalchemy.future import select
 from app.schemas.chat import GetChatsPayload, createMessage, GetOneChat
 from sqlalchemy import and_
+from app.controlers.ai import get_title
 
 
 async def creatChat(payload, db: AsyncSession):
@@ -77,3 +78,16 @@ async def getChat(payload: GetOneChat, db: AsyncSession):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+async def set_chat_title(chat_record, message, db):
+    try:
+        title = await get_title(message)
+        title = title.strip('"')
+        chat_record.title = title
+        db.add(chat_record)
+        await db.commit()
+        await db.refresh(chat_record)
+
+    except Exception as e:
+        print(f"Failed to set title: {e}")

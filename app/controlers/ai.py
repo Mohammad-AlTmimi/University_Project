@@ -21,7 +21,7 @@ ENDPOINT = os.getenv("ENDPOINT")
 DEPLOYMENT_NAME = os.getenv("DEPLOYMENT_NAME")
 API_VERSION = os.getenv("API_VERSION")
 openai.api_key = os.getenv("API_KEY")
-
+client = openai.AsyncOpenAI(api_key=os.getenv("API_KEY")) 
 templateBuilder = {
     'Build Table': buildTableTemplate,
     'General University Question': generalQuestionTemplate
@@ -31,6 +31,28 @@ temperatures = {
     'General University Question': 0,
     'Build Table': 0
 }
+
+async def get_title(question):
+    try:
+        response = await client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful MiLo assistant. Your job is to create a concise and descriptive title from the user's question."
+                },
+                {
+                    "role": "user",
+                    "content": question
+                }
+            ],
+            temperature=0.5
+        )
+        print(response.choices[0].message.content.strip())
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        print(e)
+        raise e
 
 
 async def AIResponse(payload: MessageResponse):
@@ -68,7 +90,7 @@ async def AIResponse(payload: MessageResponse):
     request_payload = {
         "model": "gpt-4",
         "messages": messages,
-        "max_tokens": 300 if payload.messageType == 'Build Table' else 150,  
+        "max_tokens": 700 if payload.messageType == 'Build Table' else 500,  
         "temperature": temperatures.get(payload.messages[-1].get('type'), 0.7),
         "stream": True  
     }

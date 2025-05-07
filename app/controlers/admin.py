@@ -89,7 +89,8 @@ async def getusers(
                 "name": user.name,
                 "role": user.role.value,
                 "status": user.status.value,
-                "portal_id": user.portal.portal_id if user.portal else None
+                "portal_id": user.portal.portal_id if user.portal else None,
+                "created_at": user.created_at
             })
 
         return {

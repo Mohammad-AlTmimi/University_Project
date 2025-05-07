@@ -7,13 +7,13 @@ from sqlalchemy.sql import text
 from app.controlers.user import createToken
 from app.nodatabase import get_nodb
 from app.ml_models.sbertmodel import classify_question
-from app.controlers.chat import creatChat, getChats, updateLastInteractoin,getChat
+from app.controlers.chat import creatChat, getChats, updateLastInteractoin,getChat,set_chat_title
 from app.controlers.message import PageMessages
 from datetime import datetime, timezone
 from app.schemas.chat import MessagePayload
 from app.models.chat import Chat
 from app.schemas.chat import GetChatsPayload, GetOneChat, GetMessages
-from app.controlers.ai import AIResponse
+from app.controlers.ai import AIResponse, get_title
 from app.schemas.ai import MessageResponse
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from fastapi.responses import StreamingResponse
@@ -50,6 +50,8 @@ async def addMessage(
         chat_record = None
         if payload.chat_id == "newchat":
             chat_record = await creatChat(user_id , db)
+            asyncio.create_task(set_chat_title(chat_record, payload.message, db))
+
         else:
             oneChat = GetOneChat(
                 user_id=user_id,
@@ -68,7 +70,7 @@ async def addMessage(
         oneChat = GetMessages(
             user_id=user_id,
             chat_id=chat_id,
-            start= max(1 , chat_record.messages_number - 2),
+            start= max(1 , chat_record.messages_number - 4),
             end= chat_record.messages_number
         )
         

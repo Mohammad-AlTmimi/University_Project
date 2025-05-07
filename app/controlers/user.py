@@ -136,30 +136,27 @@ async def searchPortal(payload: LoginPortal, db: AsyncSession):
 
 async def loginPortal(portalId: str, portalPassword: str):
     url = 'https://portal.hebron.edu/Default.aspx'
-
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
     try:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page()
-            await page.goto(url, wait_until='domcontentloaded')
-            
-            html = await page.content()  # Get the HTML content
-            soup = BeautifulSoup(html, 'html.parser')
-            
-            viewstate = soup.find("input", {'name': '__VIEWSTATE'})['value'] if soup.find("input", {'name': '__VIEWSTATE'}) else ''
-            viewstategenerator = soup.find("input", {'name': '__VIEWSTATEGENERATOR'})['value'] if soup.find("input", {'name': '__VIEWSTATEGENERATOR'}) else ''
-            eventvalidation = soup.find("input", {'name': '__EVENTVALIDATION'})['value'] if soup.find("input", {'name': '__EVENTVALIDATION'}) else ''
-            
-            await browser.close()
-
-            if not viewstate or not viewstategenerator or not eventvalidation:
-                raise HTTPException(status_code=403, detail="Failed to extract ASP.NET hidden fields")
-            
-            return viewstate, viewstategenerator, eventvalidation
-
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, headers=headers) as response:
+                if response.status != 200:
+                    raise HTTPException(status_code=response.status, detail="Failed to fetch page")
+                html = await response.text()
+                soup = BeautifulSoup(html, 'html.parser')
+                
+                viewstate = soup.find("input", {'name': '__VIEWSTATE'})['value'] if soup.find("input", {'name': '__VIEWSTATE'}) else ''
+                viewstategenerator = soup.find("input", {'name': '__VIEWSTATEGENERATOR'})['value'] if soup.find("input", {'name': '__VIEWSTATEGENERATOR'}) else ''
+                eventvalidation = soup.find("input", {'name': '__EVENTVALIDATION'})['value'] if soup.find("input", {'name': '__EVENTVALIDATION'}) else ''
+                
+                if not viewstate or not viewstategenerator or not eventvalidation:
+                    raise HTTPException(status_code=403, detail="Failed to extract ASP.NET hidden fields")
+                
+                return viewstate, viewstategenerator, eventvalidation
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
-
         
 async def signPortal(portalId: str, portalPassword: str):
     viewstate , viewstategenerator, eventvalidation = await loginPortal(portalId=portalId, portalPassword=portalPassword)
@@ -183,6 +180,7 @@ async def signPortal(portalId: str, portalPassword: str):
         }
         
         async with session.post(url, data=data, headers=headers) as login_response:
+
             if login_response.status != 200:
                 raise HTTPException(status_code=login_response.status, detail="Failed to authenticate")
             

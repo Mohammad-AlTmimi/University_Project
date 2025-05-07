@@ -16,7 +16,10 @@ from contextlib import asynccontextmanager
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from app.nodatabase import delete_nodb
-
+from dotenv import load_dotenv
+import os
+env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
+load_dotenv(dotenv_path=env_path)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await create_async_database()
@@ -50,7 +53,9 @@ app.include_router(admin_router, prefix='/admin')
 
 @app.get("/")
 def root():
-    return {"message": "Hello World"}
+    return {
+        'hello world'
+    }
 @app.delete('/')
 async def delet():
     await delete_table()

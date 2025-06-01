@@ -1,27 +1,6 @@
 📚 University Project - GPT-Wrapped Academic Assistant
 📋 Table of Contents
 
-Project Overview
-Tech Stack
-Project Architecture
-Prerequisites
-Project Setup
-Folder Structure
-API Endpoints
-Admin Routes
-Chat Routes
-User Routes
-Guest Routes
-
-
-Database Design
-GPT Integration
-Deployment Notes
-Testing
-Contributing
-Troubleshooting
-License
-Acknowledgments
 
 🎯 Project Overview
 This university project is a GPT-wrapped web application built using FastAPI, designed to assist students at Hebron University with their academic journey by providing support for assessments and answering university-related queries. The application leverages a GPT-based AI model to generate responses, process academic documents, and deliver personalized assistance. It integrates PostgreSQL for structured data, MongoDB for flexible storage, and MongoDB Atlas for cloud-hosted NoSQL storage with advanced search capabilities. The system is containerized with Docker and deployed on AWS EC2 for scalability and accessibility.
@@ -80,7 +59,7 @@ To run this project locally, ensure you have:
 
 🚀 Project Setup
 1. Clone the Repository
-git clone https://github.com/Mohammad-AlTmimi/University_Project.git
+git clone https:/github.com/Mohammad-AlTmimi/University_Project.git
 cd University_Project
 
 2. Set Up Environment Variables
@@ -102,7 +81,7 @@ MONGO_PORT=27017
 MONGO_DB=your_mongo_db_name
 
 # MongoDB Atlas Settings
-MONGO_ATLAS_URI=mongodb+srv://<username>:<password>@cluster0.mongodb.net/<dbname>?retryWrites=true&w=majority
+MONGO_ATLAS_URI=mongodb+srv:/<username>:<password>@cluster0.mongodb.net/<dbname>?retryWrites=true&w=majority
 
 # AWS EC2 Settings
 AWS_ACCESS_KEY_ID=your_access_key
@@ -119,7 +98,7 @@ pip install -r requirements.txt
 4. Build and Run with Docker
 docker-compose up --build
 
-Access the API at http://localhost:8000/docs for Swagger UI.
+Access the API at http:/localhost:8000/docs for Swagger UI.
 5. Deploy to AWS EC2
 
 Launch an EC2 instance (e.g., Ubuntu 20.04).
@@ -127,7 +106,7 @@ Install Docker and Docker Compose.
 Copy project files to EC2 using scp or Git.
 Set up security groups for ports 8000 (FastAPI), 5432 (PostgreSQL), and 27017 (MongoDB, if local).
 Run docker-compose up --build on EC2.
-Access via http://<ec2-public-ip>:8000.
+Access via http:/<ec2-public-ip>:8000.
 
 # University_Project Folder Structure
 ```
@@ -135,7 +114,7 @@ University_Project/
 ├── app/ # FastAPI application code
 │ ├── init.py
 │ ├── main.py # FastAPI app entry point
-│ ├── api/ # API routes
+│ ├──  # API routes
 │ │ ├── init.py
 │ │ ├── admin.py # Admin routes (service toggling, charts, uploads)
 │ │ ├── chat.py # Chat routes (messages, chats)
@@ -189,7 +168,7 @@ University_Project/
 │ ├── setup_db.sh
 │ └── deploy_ec2.sh
 ├── docker/ # Docker configurations
-│ ├── fastapi/Dockerfile
+│ ├── fastDockerfile
 │ ├── postgres/Dockerfile
 │ └── mongo/Dockerfile
 ├── .env # Environment variables
@@ -202,7 +181,7 @@ University_Project/
 
 📂 Folder and File Details
 
-app/api/: Defines API routes for admins, chats, users, and guests.
+app/: Defines API routes for admins, chats, users, and guests.
 app/schemas/: Pydantic models for request and response validation (e.g., MessagePayload, createUser).
 app/models/: SQLAlchemy models for PostgreSQL tables (e.g., User, Chat).
 app/controlers/: Business logic for API endpoints, including GPT response generation and PDF processing.
@@ -218,14 +197,15 @@ scripts/: Automation scripts for database setup and EC2 deployment.
 docker/: Dockerfiles for FastAPI, PostgreSQL, and MongoDB.
 
 🌐 API Endpoints
-Below is a detailed list of all API endpoints, grouped by module, with descriptions, request/response formats, and examples. All endpoints are prefixed with /api.
-🛠️ Admin Routes (/api/admin)
-These routes are restricted to administrators and support managing services, uploading academic data, and viewing analytics.
+Below is a comprehensive list of all API endpoints, organized by module, including descriptions, request/response formats, and examples. All endpoints are prefixed with /api.
+🛠️ Admin Routes (/admin)
+These routes are restricted to administrators and support managing services, uploading academic data, and viewing analytics for the GPT-based academic assistant.
 1. 🔄 Toggle Service
 
-Endpoint: POST /api/admin/services/{service_id}/toggle
+Endpoint: POST /admin/services/{service_id}/toggle
 Description: Starts or stops a service (e.g., BUILD_TABLE_QUESTION) to enable/disable GPT-based features like table generation for assessments.
 Authentication: 🔑 Admin JWT token required.
+```
 Request Body (Pydantic: ToggleRequest):{
   "action": "start"
 }
@@ -238,17 +218,18 @@ Response:{
 
 
 Example:curl -X POST "http://localhost:8000/admin/services/BUILD_TABLE_QUESTION/toggle" \
--H "Authorization: Bearer <admin_jwt_token>" \
--H "Content-Type: application/json" \
--d '{"action": "start"}'
+  -H "Authorization: Bearer <admin_jwt_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"action": "start"}'
 
-
+```
 
 2. 📊 Get Charts
 
-Endpoint: GET /api/admin/charts
+Endpoint: GET /admin/charts
 Description: Retrieves analytics, such as total students and message type counts (e.g., academic vs. general queries).
 Authentication: 🔑 Admin JWT token required.
+```
 Response:{
   "total_users": 100,
   "message_type_counts": {
@@ -259,30 +240,32 @@ Response:{
 
 
 Example:curl -X GET "http://localhost:8000/admin/charts" \
--H "Authorization: Bearer <admin_jwt_token>"
-
+  -H "Authorization: Bearer <admin_jwt_token>"
+```
 
 
 3. 🛠️ Get Services
 
-Endpoint: GET /api/admin/services
+Endpoint: GET /admin/services
 Description: Retrieves the status of services (e.g., GPT-based table generation).
 Authentication: 🔑 Admin JWT token required.
+```
 Response:{
   "SERVICE_BUILD_TABLE_QUESTION_ENABLED": "start"
 }
 
 
 Example:curl -X GET "http://localhost:8000/admin/services" \
--H "Authorization: Bearer <admin_jwt_token>"
-
+  -H "Authorization: Bearer <admin_jwt_token>"
+```
 
 
 4. 📂 Upload Semester Courses
 
-Endpoint: POST /api/admin/uploadsemestercourses
+Endpoint: POST /admin/uploadsemestercourses
 Description: Uploads an Excel file (.xlsx) containing semester course data to MongoDB for GPT-based course queries.
 Authentication: 🔑 Admin JWT token required.
+```
 Request: Form-data with file (Excel file).
 Response:{
   "message": "File uploaded successfully",
@@ -292,16 +275,17 @@ Response:{
 
 
 Example:curl -X POST "http://localhost:8000/admin/uploadsemestercourses" \
--H "Authorization: Bearer <admin_jwt_token>" \
--F "file=@/path/to/courses.xlsx"
-
+  -H "Authorization: Bearer <admin_jwt_token>" \
+  -F "file=@/path/to/courses.xlsx"
+```
 
 
 5. 📄 Upload PDF
 
-Endpoint: POST /api/admin/upload-pdf
+Endpoint: POST /admin/upload-pdf
 Description: Uploads a PDF (e.g., university handbook), extracts text, generates embeddings, and stores in MongoDB Atlas for GPT-driven searches.
 Authentication: 🔑 Admin JWT token required.
+```
 Request: Form-data with file (PDF file).
 Response:{
   "message": "PDF processed and saved successfully.",
@@ -310,16 +294,17 @@ Response:{
 
 
 Example:curl -X POST "http://localhost:8000/admin/upload-pdf" \
--H "Authorization: Bearer <admin_jwt_token>" \
--F "file=@/path/to/handbook.pdf"
-
+  -H "Authorization: Bearer <admin_jwt_token>" \
+  -F "file=@/path/to/handbook.pdf"
+```
 
 
 6. 📚 Get Courses
 
-Endpoint: GET /api/admin/courses
+Endpoint: GET /admin/courses
 Description: Retrieves the latest semester course data from MongoDB for administrative review.
 Authentication: 🔑 Admin JWT token required.
+```
 Response:{
   "Courses": {
     "_id": "mongo_document_id",
@@ -334,15 +319,15 @@ Response:{
 
 
 Example:curl -X GET "http://localhost:8000/admin/courses" \
--H "Authorization: Bearer <admin_jwt_token>"
-
-
+  -H "Authorization: Bearer <admin_jwt_token>"
+```
 
 7. 👥 Get Students
 
-Endpoint: GET /api/admin/students?start=1&end=10
+Endpoint: GET /admin/students?start=1&end=10
 Description: Retrieves a paginated list of students for administrative oversight.
 Authentication: 🔑 Admin JWT token required.
+```
 Query Parameters:
 start: Starting index (default: 1).
 end: Ending index (default: 10).
@@ -358,17 +343,18 @@ Response:{
 
 
 Example:curl -X GET "http://localhost:8000/admin/students?start=1&end=10" \
--H "Authorization: Bearer <admin_jwt_token>"
+  -H "Authorization: Bearer <admin_jwt_token>"
 
+```
 
-
-💬 Chat Routes (/api/chat)
+💬 Chat Routes (/chat)
 These routes enable students to interact with the GPT model for academic assistance and university queries.
 1. ✉️ Add Message
 
-Endpoint: POST /api/chat/addmessage
+Endpoint: POST /chat/addmessage
 Description: Sends a message (e.g., assessment question or university query) to a new or existing chat and streams a GPT-generated response.
 Authentication: 🔑 User JWT token required.
+```
 Request Body (Pydantic: MessagePayload):{
   "chat_id": "newchat",
   "message": "Explain the syllabus for CS101"
@@ -380,17 +366,18 @@ data: {"status": "[DONE]", "chat_id": "chat_id", "Token": "jwt_token"}
 
 
 Example:curl -X POST "http://localhost:8000/chat/addmessage" \
--H "Authorization: Bearer <user_jwt_token>" \
--H "Content-Type: application/json" \
--d '{"chat_id": "newchat", "message": "Explain the syllabus for CS101"}'
-
+  -H "Authorization: Bearer <user_jwt_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"chat_id": "newchat", "message": "Explain the syllabus for CS101"}'
+```
 
 
 2. 📜 Get Chats
 
-Endpoint: GET /api/chat/chats
+Endpoint: GET /chat/chats
 Description: Retrieves a student’s chat history (e.g., assessment or university query chats).
 Authentication: 🔑 User JWT token required.
+```
 Response:{
   "Chats": [
     {"id": "chat_id", "title": "CS101 Syllabus", "last_interaction": "2025-06-01T10:00:00"},
@@ -401,15 +388,16 @@ Response:{
 
 
 Example:curl -X GET "http://localhost:8000/chat/chats" \
--H "Authorization: Bearer <user_jwt_token>"
-
+  -H "Authorization: Bearer <user_jwt_token>"
+```
 
 
 3. 📝 Get Messages
 
-Endpoint: GET /api/chat/messages?chat_id=<chat_id>&start=1&end=10
+Endpoint: GET /chat/messages?chat_id=<chat_id>&start=1&end=10
 Description: Retrieves paginated messages for a specific chat (e.g., assessment questions and GPT responses).
 Authentication: 🔑 User JWT token required.
+```
 Query Parameters:
 chat_id: Chat ID.
 start: Starting index (default: 1).
@@ -418,24 +406,36 @@ end: Ending index (default: 10).
 
 Response:{
   "messages": [
-    {"user_id": "user_id", "message": "What is the CS101 syllabus?", "type": "general", "chat_id": "chat_id", "create_time": "2025-06-01T10:00:00"},
-    {"user_id": "user_id", "message": "The syllabus covers...", "type": "response", "chat_id": "chat_id", "create_time": "2025-06-01T10:01:00"}
+    {
+      "user_id": "user_id",
+      "message": "What is the CS101 syllabus?",
+      "type": "general",
+      "chat_id": "chat_id",
+      "create_time": "2025-06-01T10:00:00"
+    },
+    {
+      "user_id": "user_id",
+      "message": "The syllabus covers...",
+      "type": "response",
+      "chat_id": "chat_id",
+      "create_time": "2025-06-01T10:01:00"
+    }
   ],
   "Token": "jwt_token"
 }
 
 
 Example:curl -X GET "http://localhost:8000/chat/messages?chat_id=chat_id&start=1&end=10" \
--H "Authorization: Bearer <user_jwt_token>"
+  -H "Authorization: Bearer <user_jwt_token>"
+```
 
 
-
-👤 User Routes (/api/user)
+👤 User Routes (/user)
 These routes handle student authentication and profile management.
 1. 📝 Signup
-
-Endpoint: POST /api/user/signup
+Endpoint: POST /user/signup
 Description: Creates a new student account with university portal credentials.
+```
 Request Body (Pydantic: createUser):{
   "portal_id": "12345",
   "portal_password": "portal_pass",
@@ -445,22 +445,27 @@ Request Body (Pydantic: createUser):{
 
 
 Response:{
-  "User": {"id": "user_id", "name": "John Doe", "portal_id": "12345"},
+  "User": {
+    "id": "user_id",
+    "name": "John Doe",
+    "portal_id": "12345"
+  },
   "Token": "jwt_token",
   "Name": "John Doe"
 }
 
 
 Example:curl -X POST "http://localhost:8000/user/signup" \
--H "Content-Type: application/json" \
--d '{"portal_id": "12345", "portal_password": "portal_pass", "password": "user_pass", "name": "John Doe"}'
-
+  -H "Content-Type: application/json" \
+  -d '{"portal_id": "12345", "portal_password": "portal_pass", "password": "user_pass", "name": "John Doe"}'
+```
 
 
 2. 🔑 Login
 
-Endpoint: POST /api/user/login
+Endpoint: POST /user/login
 Description: Authenticates a student using portal ID and password.
+```
 Request Body (Pydantic: loginUser):{
   "portal_id": "12345",
   "password": "user_pass"
@@ -469,21 +474,26 @@ Request Body (Pydantic: loginUser):{
 
 Response:{
   "message": "Login successful",
-  "user": {"id": "user_id", "name": "John Doe", "portal_id": "12345"}
+  "user": {
+    "id": "user_id",
+    "name": "John Doe",
+    "portal_id": "12345"
+  }
 }
 
 
 Example:curl -X POST "http://localhost:8000/user/login" \
--H "Content-Type: application/json" \
--d '{"portal_id": "12345", "password": "user_pass"}'
-
+  -H "Content-Type: application/json" \
+  -d '{"portal_id": "12345", "password": "user_pass"}'
+```
 
 
 3. 🖼️ Change Photo
 
-Endpoint: POST /api/user/changephoto
+Endpoint: POST /user/changephoto
 Description: Uploads a profile photo (JPEG/PNG) for a student.
 Authentication: 🔑 User JWT token required.
+```
 Request: Form-data with file (image file).
 Response:{
   "message": "Photo Update Complete",
@@ -492,27 +502,29 @@ Response:{
 
 
 Example:curl -X POST "http://localhost:8000/user/changephoto" \
--H "Authorization: Bearer <user_jwt_token>" \
--F "file=@/path/to/photo.jpg"
-
+  -H "Authorization: Bearer <user_jwt_token>" \
+  -F "file=@/path/to/photo.jpg"
+```
 
 
 4. 📸 Get Photo
 
-Endpoint: GET /api/user/photo
+Endpoint: GET /user/photo
 Description: Retrieves a student’s profile photo.
 Authentication: 🔑 User JWT token required.
+```
 Response: Image file (JPEG).
 Example:curl -X GET "http://localhost:8000/user/photo" \
--H "Authorization: Bearer <user_jwt_token>" \
--o photo.jpg
-
+  -H "Authorization: Bearer <user_jwt_token>" \
+  -o photo.jpg
+```
 
 
 5. 🔄 Forget Password
 
-Endpoint: POST /api/user/forgetpassword
+Endpoint: POST /user/forgetpassword
 Description: Initiates password reset by generating a token using portal credentials.
+```
 Request Body (Pydantic: ForgetPasswordRequest):{
   "portal_id": "12345",
   "portal_password": "portal_pass"
@@ -525,15 +537,16 @@ Response:{
 
 
 Example:curl -X POST "http://localhost:8000/user/forgetpassword" \
--H "Content-Type: application/json" \
--d '{"portal_id": "12345", "portal_password": "portal_pass"}'
-
+  -H "Content-Type: application/json" \
+  -d '{"portal_id": "12345", "portal_password": "portal_pass"}'
+```
 
 
 6. 🔑 Reset Password
 
-Endpoint: POST /api/user/resetpassword
+Endpoint: POST /user/resetpassword
 Description: Resets a student’s password using a reset token.
+```
 Request Body (Pydantic: ResetPasswordRequest):{
   "password": "new_pass"
 }
@@ -546,17 +559,18 @@ Response:{
 
 
 Example:curl -X POST "http://localhost:8000/user/resetpassword" \
--H "Authorization: Bearer <reset_token>" \
--H "Content-Type: application/json" \
--d '{"password": "new_pass"}'
-
+  -H "Authorization: Bearer <reset_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"password": "new_pass"}'
+```
 
 
 7. 🔄 Change Password
 
-Endpoint: POST /api/user/changepassword
+Endpoint: POST /user/changepassword
 Description: Changes a student’s password after verifying the old password.
 Authentication: 🔑 User JWT token required.
+```
 Request Body (Pydantic: ChangePasswordRequest):{
   "old_password": "old_pass",
   "password": "new_pass"
@@ -569,17 +583,18 @@ Response:{
 
 
 Example:curl -X POST "http://localhost:8000/user/changepassword" \
--H "Authorization: Bearer <user_jwt_token>" \
--H "Content-Type: application/json" \
--d '{"old_password": "old_pass", "password": "new_pass"}'
-
+  -H "Authorization: Bearer <user_jwt_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"old_password": "old_pass", "password": "new_pass"}'
+```
 
 
 8. 🔄 Update Portal Password
 
-Endpoint: POST /api/user/updateportalpassword
+Endpoint: POST /user/updateportalpassword
 Description: Updates the student’s university portal password.
 Authentication: 🔑 User JWT token required.
+```
 Request Body:{
   "password": "new_portal_pass"
 }
@@ -591,18 +606,19 @@ Response:{
 
 
 Example:curl -X POST "http://localhost:8000/user/updateportalpassword" \
--H "Authorization: Bearer <user_jwt_token>" \
--H "Content-Type: application/json" \
--d '{"password": "new_portal_pass"}'
+  -H "Authorization: Bearer <user_jwt_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"password": "new_portal_pass"}'
+```
 
 
-
-👥 Guest Routes (/api/guest)
+👥 Guest Routes (/guest)
 These routes allow non-authenticated users to interact with the GPT model for university-related queries.
 1. ✉️ Add Message
 
-Endpoint: POST /api/guest/addmessage
+Endpoint: POST /guest/addmessage
 Description: Allows guests to send university-related queries (e.g., campus info) and receive GPT-generated responses.
+```
 Request Body (Pydantic: MessagePayload):{
   "chat_id": "Guest",
   "message": "What is the university address?"
@@ -614,59 +630,140 @@ data: {"status": "[DONE]", "chat_id": "Guest"}
 
 
 Example:curl -X POST "http://localhost:8000/guest/addmessage" \
--H "Content-Type: application/json" \
--d '{"chat_id": "Guest", "message": "What is the university address?"}'
-
-
-
-🗄️ Database Design
-🐘 PostgreSQL
-
-Purpose: Stores structured data requiring relational integrity.
-Tables:
-Users Table: 
-Columns: id (primary key), name, password_hash, role (enum: student, admin), updated (enum: Yes, No).
-Purpose: Stores student and admin profiles.
-
-
-UserPortal Table: 
-Columns: id (primary key), portal_id (unique), portal_password, user_id (foreign key).
-Purpose: Links users to university portal credentials.
-
-
-Chats Table: 
-Columns: id (primary key), user_id (foreign key), title, last_interaction, messages_number.
-Purpose: Tracks chat sessions for academic and university queries.
+  -H "Content-Type: application/json" \
+  -d '{"chat_id": "Guest", "message": "What is the university address?"}'
+```
 
 
 
 
 
-🍃 MongoDB (Local)
 
-Purpose: Stores unstructured or semi-structured data for flexibility and scalability.
-Collections:
-Messages Collection: 
-Documents: { "user_id": String, "message": String, "type": String, "chat_id": String, "create_time": Date, "template": String }.
-Purpose: Stores chat messages, including GPT responses.
+# 🗄️ Database Design
 
+## 🐘 PostgreSQL
 
-Semester Courses Collection: 
-Documents: { "_id": ObjectId, "create_time": Date, "courses": Array, "Token": String }.
-Purpose: Stores course data for GPT queries.
+### Purpose:
+Stores structured data requiring relational integrity for user profiles, portal credentials, and chat sessions.
 
+---
 
+### **Users Table**
+Stores student and admin profiles with authentication and role information.
 
+| Column         | Type                                 | Description                                           |
+|----------------|--------------------------------------|-------------------------------------------------------|
+| `id`           | String, primary key, UUID            | Unique identifier for the user                        |
+| `profile_image`| String, nullable                     | Path to the user's profile image                      |
+| `status`       | Enum: `active`, `inactive`, `suspended` | User account status                                   |
+| `password_hash`| String, not nullable                 | Hashed user password                                  |
+| `portal_id`    | String, foreign key → `user_portal.id`| Links to the user's portal credentials                |
+| `created_at`   | DateTime                             | Timestamp of user creation (UTC, no timezone)         |
+| `role`         | Enum: `student`, `admin`             | User role                                             |
+| `name`         | String                               | User's full name                                      |
+| `updated`      | Enum: `Yes`, `No`                    | Indicates if the user profile has been updated        |
 
+---
+
+### **UserPortal Table**
+Links users to their university portal credentials for authentication.
+
+| Column           | Type                  | Description                      |
+|------------------|-----------------------|----------------------------------|
+| `id`             | String, primary key, UUID | Unique identifier for the portal entry |
+| `portal_id`      | String, unique, not nullable | University portal ID             |
+| `portal_password`| String, not nullable   | Password for the university portal |
+
+---
+
+### **Chats Table**
+Tracks chat sessions for academic and university queries, associated with users.
+
+| Column           | Type                                | Description                                |
+|------------------|-------------------------------------|--------------------------------------------|
+| `id`             | String, primary key, UUID           | Unique identifier for the chat session     |
+| `chat_number`    | Integer, not nullable               | Sequential number for the chat             |
+| `user_id`        | String, foreign key → `users.id`    | Links to the user who owns the chat        |
+| `messages_number`| Integer, not nullable, default: 0   | Number of messages in the chat             |
+| `timestamp`      | DateTime                            | Creation timestamp (UTC, no timezone)      |
+| `title`          | String                              | Title of the chat session                  |
+| `last_interaction`| DateTime                           | Timestamp of the last interaction          |
+
+---
+
+## 🍃 MongoDB (Local)
+
+### Purpose:
+Stores unstructured or semi-structured data for flexibility and scalability, supporting chat messages, student data, and semester course information.
+
+---
+
+### **Messages Collection**
+
+```json
+{
+  "user_id": "user_id",
+  "message": "",
+  "type": "question",
+  "chat_id": "chat_id",
+  "create_time": "2025-06-01T10:00:00"
+}
+```
+Purpose: Stores chat messages, including user questions and GPT responses, linked to specific users and chat sessions.
+
+student_data Collection
+```json
+{
+  "semester": "Fall 2025",
+  "portal_id": "12345",
+  "courses": ["CS101", "CS102"],
+  "active": true,
+  "planNumber": "001",
+  "level": "Sophomore",
+  "under_warning": false,
+  "GPA": 3.5,
+  "create_time": "2025-06-01T10:00:00Z"
+}
+```
+Purpose: Stores student academic data, including semester enrollment, courses, academic standing, and GPA.
+
+semester_courses Collection
+```json
+{
+  "create_time": "2025-06-01T10:00:00",
+  "courses": [
+    {"course_id": "CS101", "name": "Intro to CS"},
+    {"course_id": "CS102", "name": "Data Structures"}
+  ]
+}
+```
+Purpose: Stores semester course data uploaded from Excel files for GPT-based course queries, linked to admin actions.
 
 ☁️ MongoDB Atlas
+Purpose:
+Provides cloud-hosted, scalable storage with advanced search capabilities for university information.
 
-Purpose: Provides cloud-hosted, scalable storage with advanced search capabilities.
-Collections:
-hu_information Collection: 
-Documents: Stores PDF chunks with embeddings for GPT-driven text/vector search.
-Indexes: text_search (text index), vector_search (vector index).
-Purpose: Enables semantic search for university-related information.
+hu_information Collection
+```json
+{
+  "text": "chunk of text from PDF",
+  "embeding_values": [0.1, 0.2, ..., 0.9]
+}
+```
+Indexes:
+
+text_search: Text index for keyword-based search.
+
+vector_search: Vector index for semantic search using embeddings.
+
+Purpose: Stores PDF chunks with embeddings for GPT-driven text and vector search, enabling semantic queries for university-related information.
+
+
+
+
+
+
+
 
 
 
